@@ -9,12 +9,12 @@ sns.set()
 
 #%% Load Data
 params = pickle.loads(Path('gabor_60.pk').read_bytes())
-raw = np.load('superstim.npz')
+raw = np.load('../superstim.npz')
 for name in ['xpos', 'ypos']:
     globals()[name] = raw[name]
 
 B = pickle.loads(Path('field.pk').read_bytes())
-B_reduced, pcs = pca(B, 60)
+B_reduced, pcs = reduce_B_rank(B, 60)
 fitted = make_gabor((16, 9), params)
 
 corr = correlate(B, fitted)

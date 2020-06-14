@@ -1,6 +1,7 @@
 import pickle
 import time
 from functools import partial
+from pathlib import Path
 
 import jax.numpy as np
 import matplotlib.pyplot as plt
@@ -10,24 +11,11 @@ from jax import value_and_grad, grad, jit
 from jax.experimental.optimizers import rmsprop_momentum
 from jax.numpy import cos, sin, exp
 from jax.numpy import pi as π
-from jax.random import PRNGKey, randint
+from jax.random import PRNGKey, randint, normal
 
-from .analyze_field import pca
-from utils_jax import mse, correlate, zscore_img
-
-params_real = {
-    'σ': 5.,
-    'θ': π / 4,
-    'λ': π / 4,
-    'γ': 0.8,
-    'φ': 0.1,
-    'pos_x': 0.,
-    'pos_y': 5.,
-    'scale': 1.,
-    'b': 0.
-}
-
-params_real = np.array([[v for k, v in params_real.items()]])
+from scipy.stats import zscore
+from utils import reduce_B_rank
+from utils_jax import *
 
 
 def make_gabor(size, params):
@@ -55,7 +43,7 @@ def plot_gabor(data, p, n_pca=None, error_metric=mse, seed=40):
     gen = make_gabor((16, 9), p)
 
     sns.set()
-    fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300)
+    fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_layout=True)
     axs = onp.hstack([axs[0:2, :], axs[2:4, :]]).T
 
     error = error_metric(B_rz, gen)
@@ -69,9 +57,9 @@ def plot_gabor(data, p, n_pca=None, error_metric=mse, seed=40):
         axs[i, 1].imshow(B_rz[idx_sorted[i], ...], cmap='bwr', vmin=-scale, vmax=scale)
         axs[i, 0].axis('off')
         axs[i, 1].axis('off')
+
     fig.suptitle(
         f'Randomly selected 10 neurons from {len(data)} neurons. \n Top {n_pca} PCs RF with corr coef. L: Generated, R: Raw.')
-    plt.tight_layout()
     plt.show()
 
 @partial(jit)
@@ -111,94 +99,71 @@ def gen_start(img):
     return params
 
 @jit
-def fit(params, test):
+def jax_fit(params, test, update, get_params):
     for i in range(3):
         Δ = grad(error)(get_params(params), test)
         params = update(i, Δ, params)
     return params
 
 
+def fit(B, rank):
+    B_reduced, pcs = reduce_B_rank(B, rank)
+    B_rz = zscore_img(B_reduced)
+
+    params_jax = gen_start(B_rz)
+
+    init, update, get_params = [jit(f) for f in rmsprop_momentum(5e-4, momentum=0.99)]
+    params_jax = init(params_jax)
+
+    t0 = time.time()
+    for i in range(2000):
+        if i % 100 == 0:
+            corr, Δ = value_and_grad(error)(get_params(params_jax), B_rz)
+            print(f'Step {3 * i} Corr: {-corr: 0.4f} t: {time.time() - t0: 6.2f}s')
+            params_jax = update(i, Δ, params_jax)
+        else:
+            params_jax = jax_fit(params_jax, B_rz, update, get_params)
+
+    return B_rz, get_params(params_jax)
+
+
 #%% Synthetic
 def validate():
+    params_real = {
+        'σ': 5.,
+        'θ': π / 4,
+        'λ': π / 4,
+        'γ': 0.8,
+        'φ': 0.1,
+        'pos_x': 0.,
+        'pos_y': 5.,
+        'scale': 1.,
+        'b': 0.
+    }
+
+    params_real = np.array([[v for k, v in params_real.items()]])
+
     rng = PRNGKey(5)
-    gnd = zscore(make_gabor((30, 20), params_real) + 0.1*normal(rng, shape=(40, 60)))
-    np.repeat(gnd, 5, axis=0)
+    gnd = zscore(make_gabor((30, 20), params_real) + 0.1 * normal(rng, shape=(40, 60)))
+    gnd = np.repeat(gnd, 5, axis=0)
 
-    params_test = gen_start(gnd)  # np.array([[v for k, v in params_test.items()]])
-
-    init, update, get_params = [jit(f) for f in rmsprop_momentum(3e-4)]
-    params_test = init(params_test)
-    #
-    for i in range(2000):
-        mse, Δ = value_and_grad(error)(get_params(params_test), gnd)
-        params_test = update(i, Δ, params_test)
-        if i % 10 == 0:
-            print(mse)
+    B_rz, params_jax = fit(gnd, 100)
 
     fig, axs = plt.subplots(ncols=2, figsize=(12, 5), dpi=300)
     axs[0].imshow(gnd[0, ...])
-    axs[1].imshow(make_gabor((30, 20), get_params(params_test))[0, ...])
+    axs[1].imshow(make_gabor((30, 20), params_jax)[0, ...])
     gen_start(onp.asarray(gnd))
     plt.show()
 
 
-#%% Real
-#
 if __name__ == '__main__':
     run = True
-    cross_val = False
     if run:
-        if cross_val:
-            for k in range(1, 2):
-                with open(f'field{k}.pk', 'rb') as f:
-                    B = pickle.load(f)
+        B = pickle.loads(Path(f'field.pk').read_bytes())
+        n_pca = 60
+        B_rz, params_jax = fit(B, n_pca)
 
-                for n_pca in [4, 8, 15, 30, 60, 90, 120, 180, 250]:
-                    print(n_pca)
+        with open(f'gabor_{n_pca}.pk', 'wb') as f:
+            pickle.dump(params_jax, f)
 
-                    B_reduced, pcs = pca(B, n_pca)
-
-                    B_rz = zscore_img(B_reduced)  # [:100, ...])
-                    params_jax = gen_start(B_rz)
-
-                    init, update, get_params = [jit(f) for f in rmsprop_momentum(5e-4, momentum=0.99)]
-                    params_jax = init(params_jax)
-
-                    t0 = time.time()
-                    for i in range(1200):
-                        if i % 100 == 0:
-                            corr, Δ = value_and_grad(error)(get_params(params_jax), B_rz)
-                            print(f'Step {3*i} Corr: {-corr: 0.4f} t: {time.time() - t0: 6.2f}s')
-                            params_jax = update(i, Δ, params_jax)
-                        else:
-                            params_jax = fit(params_jax, B_rz)
-
-                    with open(f'gabor_{k}_{n_pca}.pk', 'wb') as f:
-                        pickle.dump(get_params(params_jax), f)
-
-        else:
-            with open(f'field.pk', 'rb') as f:
-                B = pickle.load(f)
-
-            n_pca = 60
-            B_reduced, pcs = pca(B, n_pca)
-            B_rz = zscore_img(B_reduced)  # [:100, ...])
-            params_jax = gen_start(B_rz)
-
-            init, update, get_params = [jit(f) for f in rmsprop_momentum(5e-4, momentum=0.99)]
-            params_jax = init(params_jax)
-
-            t0 = time.time()
-            for i in range(2000):
-                if i % 100 == 0:
-                    corr, Δ = value_and_grad(error)(get_params(params_jax), B_rz)
-                    print(f'Step {3 * i} Corr: {-corr: 0.4f} t: {time.time() - t0: 6.2f}s')
-                    params_jax = update(i, Δ, params_jax)
-                else:
-                    params_jax = fit(params_jax, B_rz)
-
-            with open(f'gabor_{n_pca}.pk', 'wb') as f:
-                pickle.dump(get_params(params_jax), f)
-
-            #%% Plot
-            plot_gabor(B_rz, get_params(params_jax))
+        plot_gabor(B_rz, params_jax)

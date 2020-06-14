@@ -37,6 +37,6 @@ def zscore_img(img):
     else:
         raise Exception('Not image!')
 
-    zed = (img - np.mean(img, axis=1, keepdims=1)) / np.sqrt(np.var(img, axis=1, keepdims=1))
+    zed = (img - np.mean(img, axis=0, keepdims=1)) / np.sqrt(np.var(img, axis=0, keepdims=1))
     return zed.reshape(ori)
 

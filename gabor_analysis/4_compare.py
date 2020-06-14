@@ -1,7 +1,8 @@
 import pandas as pd
+from pathlib import Path
 
 from gabor import *
-from utils_jax import mse, correlate, zscore_img
+from utils_jax import *
 
 # %% 2-fold Cross-validation
 
@@ -9,32 +10,30 @@ x = [4, 8, 15, 30, 60, 90, 120, 180, 250]
 mseB, mseimg, cor_pc, corimg = [], [], [], []
 
 for k in [2, 1]:
+    """ k is where Gabor is fit. """
     another = 2 if k == 1 else 1
     print(k, another)
-    with open(f'field{k}.pk', 'rb') as f:
-        B = zscore_img(pickle.load(f))
-    with open(f'field{another}.pk', 'rb') as f:
-        Bprime = zscore_img(pickle.load(f))
+
+    B = zscore_img(pickle.loads(Path(f'field{k}.pk').read_bytes()))
+    Bprime = zscore_img(pickle.loads(Path(f'field{another}.pk').read_bytes()))
 
     for n in x:
-        with open(f'gabor_{another}_{n}.pk', 'rb') as f:
-            params = pickle.load(f)
+        params = pickle.loads(Path(f'gabor_{k}_{n}.pk').read_bytes())
 
-        B_reduced, pcs = pca(B, n)
+        B_reduced, pcs = reduce_B_rank(B, n)
         Br = zscore_img(B_reduced)
 
         fitted = make_gabor((16, 9), params)
 
-        mseB.append(np.mean(mse(B, fitted)))
-        mseimg.append(np.mean(mse(Br, Bprime)))
-        # mseBP.append(np.mean(mse(Br, fitted)))
-        cor_pc.append(np.mean(correlate(B, fitted)))
-        corimg.append(np.mean(correlate(Br, Bprime)))
-        # corP.append(np.mean(correlate(Br, fitted)))
+        mseB.append(np.mean(mse(Bprime, fitted)))
+        mseimg.append(np.mean(mse(Bprime, Br)))
+        cor_pc.append(np.mean(correlate(Bprime, fitted)))
+        corimg.append(np.mean(correlate(Bprime, Br)))
 
 #%%
 fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12,8), dpi=300)
 axs = axs.flatten()
+
 x = [4, 8, 15, 30, 60, 90, 120, 180, 250]
 for i, v in enumerate([mseB, mseimg, cor_pc, corimg]):
     axs[i].plot(x, v[:len(x)], label='Fold 1')
@@ -56,21 +55,18 @@ plt.tight_layout(h_pad=1)
 plt.show()
 
 
-#%%
+#%% PCA vs Gabor fit on test data.
 n = 60
 k, another = 2, 1
-with open(f'field{k}.pk', 'rb') as f:
-    B = zscore_img(pickle.load(f))
-with open(f'field{another}.pk', 'rb') as f:
-    Bprime = zscore_img(pickle.load(f))
-with open(f'gabor_{another}_{n}.pk', 'rb') as f:
-    params = pickle.load(f)
+B = zscore_img(pickle.loads(Path(f'field{k}.pk').read_bytes()))
+Bprime = zscore_img(pickle.loads(Path(f'field{another}.pk').read_bytes()))
+params = pickle.loads(Path(f'gabor_{k}_{n}.pk').read_bytes())
 
-B_reduced, pcs = pca(Bprime, n)
+B_reduced, pcs = reduce_B_rank(B, n)
 fitted = make_gabor((16, 9), params)
 
-cor_pc = correlate(B_reduced, B)
-cor_gabor = correlate(fitted, B)
+cor_pc = correlate(B_reduced, Bprime)
+cor_gabor = correlate(fitted, Bprime)
 
 sns.jointplot(cor_pc, cor_gabor, kind='scatter', linewidth=0, s=10, alpha=0.1)
 
@@ -83,7 +79,7 @@ g.fig.set_dpi(300)
 
 plt.show()
 
-#%%
+#%% Examples of badly fitted.
 idx = onp.argwhere((cor_pc > 0.2) * (cor_gabor < 0.1)).flatten()
 fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300)
 axs = onp.hstack((axs[0:2, :], axs[2:4, :])).T
