@@ -1,7 +1,6 @@
 import numpy as np
-from matplotlib import pyplot as plt
-from sklearn.decomposition import PCA
 from scipy.optimize import curve_fit
+from sklearn.decomposition import PCA
 
 
 def shuff_cvPCA(X, another, nshuff=5, seed=942):
@@ -25,7 +24,7 @@ def shuff_cvPCA(X, another, nshuff=5, seed=942):
 
         X_use = np.zeros((2, X.shape[1], nc))
         X_use[flip, :, :] = X[0, :, idx_X].T  # Advanced indexing comes first.
-        X_use[1-flip, :, :] = X[1, :, idx_X].T
+        X_use[1 - flip, :, :] = X[1, :, idx_X].T
 
         ss[k] = cvPCA(X_use, another[:, idx_other])
 
@@ -33,7 +32,6 @@ def shuff_cvPCA(X, another, nshuff=5, seed=942):
 
 
 def cvPCA(X, another):
-    ''' X is 2 x stimuli x neurons '''
     model = PCA(n_components=X.shape[2]).fit(another)  # neu x stim
 
     xproj = X[0, ...] @ (model.components_.T / model.singular_values_)
@@ -46,9 +44,9 @@ def cvPCA(X, another):
 def fit_powerlaw(ss, dmin=50, dmax=500):
     def power_law(x, k, α):
         return k * x ** α
+
     popt, pcov = curve_fit(power_law, np.arange(dmin, dmax), ss[dmin:dmax])
     return popt, pcov
-
 
 #
 # def shuff_cvPCA(X, another, nshuff=5, seed=942):

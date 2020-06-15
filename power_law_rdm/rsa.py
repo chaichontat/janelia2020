@@ -1,7 +1,5 @@
-import numpy as np
 import seaborn as sns
 from scipy.stats import zscore
-from sklearn.decomposition import PCA
 
 from utils_powerlaw import *
 
@@ -31,10 +29,10 @@ proj_spont = S.T @ pcs_spont.T  # neu x n_components
 S_corr = zscore(S.T - proj_spont @ pcs_spont, axis=1)  # neu x time
 
 
-# %% Get index of repeating images.
+# %% Get indices of repeating images.
 unq, unq_cnt = np.unique(istim, return_counts=True)
 idx_firstrep = unq[np.argwhere(unq_cnt == 2)]  # idx of repeating img
-idx_rep = np.zeros([len(idx_firstrep), 2], dtype=np.int32)  # First and second occurrence
+idx_rep = np.zeros([len(idx_firstrep), 2], dtype=np.int32)  # First and second occurrences
 for i in range(len(idx_firstrep)):
     idx_rep[i, :] = np.where(istim == idx_firstrep[i])[0]
 assert unq.size + idx_firstrep.size == istim.size
