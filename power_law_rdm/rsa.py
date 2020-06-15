@@ -1,7 +1,7 @@
+import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import zscore
 
-import matplotlib.pyplot as plt
 from utils_powerlaw import *
 
 sns.set()
@@ -9,7 +9,7 @@ sns.set()
 
 # %% Pre-processing
 print('Loading data.')
-raw = np.load('superstim.npz')
+raw = np.load('../superstim.npz')
 for name in raw.files:
     globals()[name] = raw[name]
 
@@ -40,23 +40,61 @@ for i in range(len(idx_firstrep)):
 assert unq.size + idx_firstrep.size == istim.size
 
 
-# %%
+# %% cvPCA with train/test split.
 for_cvpca = np.transpose(S_corr[:, idx_rep], axes=(2, 0, 1))  # 2 x neu x time
 idx_notrep = np.where(np.isin(np.arange(len(istim)), np.array(idx_rep).flatten(), invert=True))[0]
 assert idx_notrep.size + idx_rep.size == istim.size
 
-ss = shuff_cvPCA(for_cvpca, S_corr[:, idx_notrep])
-ss = np.mean(ss, axis=0)
-ss /= np.sum(ss)
+# ss = run_cvPCA(for_cvpca, S_corr[:, idx_notrep], nshuff=2)
+# ss = np.mean(ss, axis=0)
+# ss /= np.sum(ss)
+#
+# popt, pcov = fit_powerlaw(ss)
+#
+# fig, ax = plt.subplots(dpi=300)
+# ax.loglog(ss)
+# ax.loglog(popt[0] * np.arange(1, len(ss) + 1) ** popt[1], '--')
+# ax.set_title(f'Eigenspectrum from 10-fold cvPCA w/ test eigenvectors, α={popt[1]: 0.3f}')
+# ax.set_xlabel('PC dimensions')
+# ax.set_ylabel('Variance (cumulative)')
+# plt.show()
 
-popt, pcov = fit_powerlaw(ss)
+#%%
+def cvPCA_traintest(X, train, ax1, ax2, name=None, dim='stim'):
+    sss = []
+    for i, ax in enumerate([ax1, ax2]):
+        if i == 0:
+            curr = 'train'
+            ss = run_cvPCA(X, train, nshuff=5, dim=dim)
+        else:
+            curr = 'test'
+            ss = run_cvPCA(X, nshuff=5, dim=dim)
 
-fig, ax = plt.subplots(dpi=300)
-ax.loglog(ss)
-ax.loglog(popt[0] * np.arange(1, len(ss) + 1) ** popt[1], '--')
-ax.set_title(f'Eigenspectrum from 5-fold cvPCA, α={popt[1]}')
-ax.set_xlabel('PC dimensions')
-ax.set_ylabel('Variance (cumulative)')
+        sss.append(ss)
+        ss = np.mean(ss, axis=0)
+        ss /= np.sum(ss)
+        popt, pcov = fit_powerlaw(ss)
+
+        ax.loglog(ss)
+        ax.loglog(popt[0] * np.arange(1, len(ss) + 1) ** popt[1], '--')
+        ax.set_title(f'{name} w/ {curr} eigenvectors, α={popt[1]: 0.3f}')
+
+        ax.set_xlabel('PC dimensions')
+        ax.set_ylabel('Variance (cumulative)')
+
+    return sss
+
+# fig, axs = plt.subplots(figsize=(12,8), nrows=2, ncols=2, dpi=300, constrained_layout=True)
+# ss_v1 = cvPCA_traintest(for_cvpca[:, ypos >= 210, :], S_corr[:, idx_notrep][ypos >= 210, :], *axs[:, 0], name='V1')
+# ss_v2 = cvPCA_traintest(for_cvpca[:, ypos < 210, :], S_corr[:, idx_notrep][ypos < 210, :], *axs[:, 1], name='V2')
+# fig.suptitle('Eigenspectra from cvPCA')
+# plt.show()
+
+
+fig, axs = plt.subplots(figsize=(12,8), nrows=2, ncols=2, dpi=300, constrained_layout=True)
+ss_v1 = cvPCA_traintest(for_cvpca[:, ypos >= 210, :], for_cvpca[:, ypos < 210, :], *axs[:, 0], name='V1', dim='neu')
+ss_v2 = cvPCA_traintest(for_cvpca[:, ypos < 210, :], for_cvpca[:, ypos >= 210, :], *axs[:, 1], name='V2', dim='neu')
+fig.suptitle('Eigenspectra of stim PCs from cvPCA, train/test from V1 or V2')
 plt.show()
 
 # %%
