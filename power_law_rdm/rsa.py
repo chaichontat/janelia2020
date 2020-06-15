@@ -1,6 +1,7 @@
 import seaborn as sns
 from scipy.stats import zscore
 
+import matplotlib.pyplot as plt
 from utils_powerlaw import *
 
 sns.set()
@@ -22,11 +23,12 @@ assert idx_spont.size + frame_start.size == spks.shape[1]
 
 S_spont = zscore(spks[:, idx_spont], axis=1)  # neu x time
 
-pca_spont = PCA(n_components=25).fit(S_spont.T)  # time x neu ; pcs in neu
+pca_spont = PCA(n_components=25).fit(S_spont.T)  # time x neu ; pcs are 'superneurons'
 pcs_spont = pca_spont.components_  # n_components x neu
 
 proj_spont = S.T @ pcs_spont.T  # neu x n_components
-S_corr = zscore(S.T - proj_spont @ pcs_spont, axis=1)  # neu x time
+S_corr = (S.T - proj_spont @ pcs_spont).T  # neu x time
+S_corr -= np.mean(S_corr, axis=1)[:, np.newaxis]
 
 
 # %% Get indices of repeating images.
