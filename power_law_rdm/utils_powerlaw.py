@@ -46,20 +46,15 @@ def run_cvPCA(X, train=None, nshuff=5, seed=942, dim='stim'):
 
     return ss
 
-
-def _cvPCA(X, train, nc):
+def _cvPCA(X, train, n_components):
     assert X.shape[1] == train.shape[0]
-    model = PCA(n_components=nc).fit(train)  # neu x stim ; pcs are 'supertime'
-    xproj = train @ (model.components_.T / model.singular_values_)
-    print(f'PC dim: {model.components_.shape}')
-    λ = (X[0, ...].T @ xproj) * (X[1, ...].T @ xproj)  # Get component in that direction.
-
-    return np.sum(λ, axis=0)
-
+    model = PCA(n_components=n_components).fit(train.T)  # X = UΣV^T
+    comp = model.components_.T  # stim x n_components
+    return np.sum((X[0, ...].T @ comp) * (X[1, ...].T @ comp), axis=0)  # inner product between n stim vectors.
 
 def fit_powerlaw(ss, dmin=50, dmax=500):
     def power_law(x, k, α):
         return k * x ** α
 
     popt, pcov = curve_fit(power_law, np.arange(dmin, dmax), ss[dmin:dmax])
-    return popt
+    return popt, pcov
