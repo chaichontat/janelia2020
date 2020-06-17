@@ -17,7 +17,7 @@ def run_cvPCA(X, train=None, nshuff=5, seed=942, dim='stim'):
     for k in range(nshuff):
         print(f'cvPCA Iter {k}')
 
-        idx_flip = np.random.rand(X.shape[2]) > 0.5  # Bootstrap 50%.
+        idx_flip = np.random.rand(X.shape[2]) > 0.5  # Flip stims. Bootstrap 50%.
         X_use = X.copy()
         X_use[0, :, idx_flip] = X[1, :, idx_flip]
         X_use[1, :, idx_flip] = X[0, :, idx_flip]
@@ -28,12 +28,25 @@ def run_cvPCA(X, train=None, nshuff=5, seed=942, dim='stim'):
                 assert train.shape[0] == X.shape[1]  # neu
                 train_ = train
 
-        elif dim == 'neu':  # Transpose X and train. -> PCs have dim
-            X_use = np.transpose(X_use, (0, 2, 1))
+        elif dim == 'V1':  # Transpose X and train. -> PCs have dim
             if train is not None:
-                assert train.shape[2] == X.shape[2]
-                idx_train = np.random.choice([0, 1])
-                train_ = train[idx_train, ...].T
+                # assert train.shape[2] == X.shape[2]
+                V1 = X_use[:, ypos >= 210, :]
+                V2 = X_use[:, ypos < 210, :]
+                train_ = V2[0, ...].T
+                X_use = np.transpose(V1, axes=(0, 2, 1))
+            else:
+                X_use = X_use[:, ypos >= 210, :]
+
+        elif dim == 'V2':  # Transpose X and train. -> PCs have dim
+            if train is not None:
+                # assert train.shape[2] == X.shape[2]
+                V1 = X_use[:, ypos >= 210, :]
+                V2 = X_use[:, ypos < 210, :]
+                train_ = V1[0, ...].T
+                X_use = np.transpose(V2, axes=(0, 2, 1))
+            else:
+                X_use = X_use[:, ypos < 210, :]
         else:
             raise Exception('What.')
 
@@ -49,8 +62,11 @@ def run_cvPCA(X, train=None, nshuff=5, seed=942, dim='stim'):
 def _cvPCA(X, train, n_components):
     assert X.shape[1] == train.shape[0]
     model = PCA(n_components=n_components).fit(train.T)  # X = UΣV^T
-    comp = model.components_.T  # stim x n_components
-    return np.sum((X[0, ...].T @ comp) * (X[1, ...].T @ comp), axis=0)  # inner product between n stim vectors.
+    # Generate 'super-neurons'
+    comp = model.components_.T  # n_components x neu
+    # Rotate entire dataset and extract first {n_components} dims, aka low-rank descriptions of neuronal activities.
+    # Then calculate inner products between {n_components} stim vectors, aka covariance.
+    return np.sum((X[0, ...].T @ comp) * (X[1, ...].T @ comp), axis=0)
 
 def fit_powerlaw(ss, dmin=50, dmax=500):
     def power_law(x, k, α):

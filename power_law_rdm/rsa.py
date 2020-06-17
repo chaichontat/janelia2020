@@ -60,41 +60,38 @@ assert idx_notrep.size + idx_rep.size == istim.size
 # plt.show()
 
 #%%
-def cvPCA_traintest(X, train, ax1, ax2, name=None, dim='stim'):
+def cvPCA_traintest(X, train, ax1, ax2, name=None, curr=None, dim='stim'):
     sss = []
     for i, ax in enumerate([ax1, ax2]):
         if i == 0:
-            curr = 'train'
-            ss = run_cvPCA(X, train, nshuff=5, dim=dim)
+            ss = run_cvPCA(X, train, nshuff=2, dim=dim)
         else:
-            curr = 'test'
-            ss = run_cvPCA(X, nshuff=5, dim=dim)
+            ss = run_cvPCA(X, nshuff=2, dim=dim)
 
         sss.append(ss)
         ss = np.mean(ss, axis=0)
         ss /= np.sum(ss)
-        popt, pcov = fit_powerlaw(ss)
+        popt, pcov = fit_powerlaw(ss, dmin=20, dmax=800)
 
         ax.loglog(ss)
         ax.loglog(popt[0] * np.arange(1, len(ss) + 1) ** popt[1], '--')
-        ax.set_title(f'{name} w/ {curr} eigenvectors, α={popt[1]: 0.3f}')
+        ax.set_title(f'{name} w/ {curr[i]} eigenvectors, α={popt[1]: 0.3f}')
 
         ax.set_xlabel('PC dimensions')
         ax.set_ylabel('Variance (cumulative)')
 
     return sss
 
-# fig, axs = plt.subplots(figsize=(12,8), nrows=2, ncols=2, dpi=300, constrained_layout=True)
-# ss_v1 = cvPCA_traintest(for_cvpca[:, ypos >= 210, :], S_corr[:, idx_notrep][ypos >= 210, :], *axs[:, 0], name='V1')
-# ss_v2 = cvPCA_traintest(for_cvpca[:, ypos < 210, :], S_corr[:, idx_notrep][ypos < 210, :], *axs[:, 1], name='V2')
-# fig.suptitle('Eigenspectra from cvPCA')
-# plt.show()
-
+fig, axs = plt.subplots(figsize=(12,8), nrows=2, ncols=2, dpi=300, constrained_layout=True)
+ss_v1_rep = cvPCA_traintest(for_cvpca[:, ypos >= 210, :], S_corr[:, idx_notrep][ypos >= 210, :], *axs[:, 0], name='V1 rep', curr=['non-rep stim', 'rep stim'])
+ss_v2_rep = cvPCA_traintest(for_cvpca[:, ypos < 210, :], S_corr[:, idx_notrep][ypos < 210, :], *axs[:, 1], name='V2 rep', curr=['non-rep stim', 'rep stim'])
+fig.suptitle('cvPCA Eigenspectra of PCs with neuron dims. Comparing eigvecs from rep/non-rep stim.')
+plt.show()
 
 fig, axs = plt.subplots(figsize=(12,8), nrows=2, ncols=2, dpi=300, constrained_layout=True)
-ss_v1 = cvPCA_traintest(for_cvpca[:, ypos >= 210, :], for_cvpca[:, ypos < 210, :], *axs[:, 0], name='V1', dim='neu')
-ss_v2 = cvPCA_traintest(for_cvpca[:, ypos < 210, :], for_cvpca[:, ypos >= 210, :], *axs[:, 1], name='V2', dim='neu')
-fig.suptitle('Eigenspectra of stim PCs from cvPCA, train/test from V1 or V2')
+ss_v1 = cvPCA_traintest(for_cvpca, 'hi', *axs[:, 0], name='V1', dim='V1', curr=['V2', 'V1'])
+ss_v2 = cvPCA_traintest(for_cvpca, 'hi', *axs[:, 1], name='V2', dim='V2', curr=['V1', 'V2'])
+fig.suptitle('cvPCA Eigenspectra of PCs with stim dims. Comparing eigvecs from V1 and V2.')
 plt.show()
 
 # %%
