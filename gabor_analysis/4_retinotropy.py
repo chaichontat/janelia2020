@@ -1,17 +1,17 @@
-from pathlib import Path
-
 import pandas as pd
 
 from gabor import *
+from utils import *
 from utils_jax import correlate
 
 sns.set()
 
 #%% Load Data
 params = pickle.loads(Path('gabor_60.pk').read_bytes())
-raw = np.load('../superstim.npz')
-for name in ['xpos', 'ypos']:
-    globals()[name] = raw[name]
+with np.load('superstim.npz') as npz:
+    img, spks = npz['img'], npz['spks']
+    xpos, ypos = npz['xpos'], npz['ypos']
+    frame_start, istim = npz['frame_start'], npz['istim']
 
 B = pickle.loads(Path('field.pk').read_bytes())
 B_reduced, pcs = reduce_B_rank(B, 60)
@@ -40,7 +40,6 @@ fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.show()
 
 #%% Hex plots vs y-pos.
-
 def make_hexplot(var, name, title, save=None):
     df = pd.DataFrame([ypos, var]).T
     df.columns = ['Physical y-pos', name]
@@ -50,7 +49,6 @@ def make_hexplot(var, name, title, save=None):
     if save:
         plt.savefig(save)
     plt.show()
-
 
 make_hexplot(params[:, 0], 'σ', 'Size of Gabor Fit (σ) vs y-position')
 make_hexplot(params[:, -2], 'Gabor x-pos', 'Retinotropic x-pos of Gabor fit vs physical y-pos')

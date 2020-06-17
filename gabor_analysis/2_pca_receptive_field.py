@@ -9,11 +9,13 @@ from utils import reduce_B_rank
 
 sns.set()
 
+""" Generate RFs on denoised spikes (by PCA). """
+
 n_pca = 90
 B = pickle.loads(Path('field.pk').read_bytes())
 B_reduced, pcs = reduce_B_rank(B, n_pca)
 
-#%% Sanity check.
+# %% Sanity check.
 np.random.seed(535)
 idx = np.random.randint(low=0, high=B.shape[2], size=10)
 fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_layout=True)
