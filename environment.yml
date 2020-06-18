@@ -1,0 +1,15 @@
+name: janelia2020
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8
+  - numpy
+  - seaborn
+  - scipy
+  - scikit-learn
+  - scikit-image
+  - jupyter
+  - jupyterlab
+  - pip:
+    - jax
+    - jaxlib
