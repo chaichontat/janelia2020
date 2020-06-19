@@ -7,9 +7,10 @@ from utils_powerlaw import Data
 
 
 class CanonicalRidge:
-    def __init__(self, n=25, lamda=0.95):
+    def __init__(self, n=25, lx=0.95, ly=0.95):
         self.n = n
-        self.λ = self.lamda = lamda
+        self.λx = lx
+        self.λy = ly
         self.V, self.singular_values, self.Σ, self.U = 4 * [None]
 
     def fit(self, X, Y):
@@ -41,9 +42,9 @@ class CanonicalRidge:
         Y -= np.mean(Y, axis=0)
 
         # See http://www2.imm.dtu.dk/pubdb/edoc/imm4981.pdf
-        K = inv(cholesky((1 - self.λ) * np.cov(X, rowvar=False) + self.λ * np.eye(X.shape[1]))) @ \
+        K = inv(cholesky((1 - self.λx) * np.cov(X, rowvar=False) + self.λx * np.eye(X.shape[1]))) @ \
             (X.T @ Y) / (X.T.shape[0] * Y.shape[1]) @ \
-            inv(cholesky((1 - self.λ) * np.cov(Y, rowvar=False) + self.λ * np.eye(Y.shape[1])))
+            inv(cholesky((1 - self.λy) * np.cov(Y, rowvar=False) + self.λy * np.eye(Y.shape[1])))
         return K
 
 
