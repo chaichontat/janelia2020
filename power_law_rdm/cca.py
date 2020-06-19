@@ -3,7 +3,7 @@ import numpy as onp
 from jax.numpy.linalg import inv, cholesky
 from sklearn.decomposition import PCA
 
-from utils_powerlaw import Data
+from spikeloader import SpikeLoader
 
 
 class CanonicalRidge:
@@ -49,7 +49,7 @@ class CanonicalRidge:
 
 
 if __name__ == '__main__':
-    data = Data('superstim.npz')
+    data = SpikeLoader('superstim.npz')
     split = data.S_corr.shape[1] // 2
 
     train = [data.S_corr[data.ypos >= 210, :split].T, data.S_corr[data.ypos < 210, :split].T]

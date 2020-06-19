@@ -6,12 +6,12 @@ from skopt import gp_minimize
 from skopt.space import Real
 
 from cca import CanonicalRidge
-from utils_powerlaw import Data
+from spikeloader import SpikeLoader
 
 """ 2-fold CV for hyperparameter optimization using Gaussian processes. """
 
 # %% Prepare data.
-data = Data('superstim.npz')
+data = SpikeLoader('superstim.npz')
 split = onp.random.rand(data.S_corr.shape[1]) > 0.5
 inv_split = np.in1d(np.arange(data.S_corr.shape[1]), split, assume_unique=True, invert=True)
 

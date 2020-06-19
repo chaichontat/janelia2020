@@ -4,10 +4,10 @@ import seaborn as sns
 from scipy.optimize import curve_fit
 from sklearn.decomposition import PCA
 
-from utils_powerlaw import Data
+from spikeloader import SpikeLoader
 
 
-class cvPCA(Data):
+class cvPCA(SpikeLoader):
     def prep_data(self):
         # %% Get indices of repeating images.
         unq, unq_cnt = np.unique(self.istim, return_counts=True)
