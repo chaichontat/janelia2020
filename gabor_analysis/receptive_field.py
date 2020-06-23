@@ -1,22 +1,24 @@
-#%%
+# %%
 import pickle
-import scipy.ndimage as ndi
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.ndimage as ndi
 import seaborn as sns
 from scipy.ndimage import gaussian_filter
 from scipy.stats import zscore
 from sklearn.decomposition import PCA
 from sklearn.linear_model import Ridge
-
-from typing import Tuple
-
+from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
+from skopt import gp_minimize
+from skopt.space import Real
 
-from spikeloader import SpikeLoader
+from spikeloader import SpikeLoader, Analyzer
 
 
-class ReceptiveField(SpikeLoader):
+class SpikeStimLoader(SpikeLoader):
     def __init__(self, *args, img_scale: float = 0.25, **kwargs):
         super().__init__(*args, **kwargs)
         self.img_scale = img_scale
@@ -33,7 +35,16 @@ class ReceptiveField(SpikeLoader):
     def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
         return train_test_split(self.X, self.S, test_size=test_size, random_state=random_state)
 
-    def gen_rf(self, X=None, S=None, n_pcs: int = 100, λ: float = 1.) -> np.ndarray:
+
+class ReceptiveField(Analyzer):
+    def __init__(self, loader: SpikeStimLoader, n_pcs: int = 100, λ: float = 1.):
+        super().__init__(loader)
+        self.img, self.X = loader.img, loader.X
+        self.n_pcs = n_pcs
+        self.λ = λ
+        self.coef_ = np.empty(0)
+
+    def fit(self, X=None, S=None):
         """
         Generate receptive fields (RFs) by multivariate linear regression between spikes and pixels.
         Can generate RFs of each principal component (PC) OR each neuron.
@@ -61,23 +72,33 @@ class ReceptiveField(SpikeLoader):
         if X is None:
             X = self.X
 
-        if n_pcs:
-            print('PCAing.')
-            pca_model = PCA(n_components=n_pcs).fit(S.T)
+        if self.n_pcs:
+            pca_model = PCA(n_components=self.n_pcs).fit(S.T)
             Sp = pca_model.components_.T
         else:
             Sp = S
 
         # Linear regression
-        print(f'Running linear regression with ridge coefficient {λ: .2f}.')
-        # ridge = Ridge(alpha=λ).fit(X, Sp)
-        B0 = np.linalg.solve((X.T @ X + λ * np.eye(X.shape[1])), X.T @ Sp)
-        B0 = np.reshape(B0, [self.img.shape[1], self.img.shape[2], -1])
-        B0 = np.transpose(gaussian_filter(B0, [.5, .5, 0]), (2, 0, 1))
-        return B0
+        print(f'Running linear regression with ridge coefficient {self.λ: .2f}.')
+        ridge = Ridge(alpha=self.λ).fit(X, Sp)
+        self.coef_ = ridge.coef_  # n_pcs x n_pxs
+        return self
 
-    @staticmethod
-    def plot_rf(B0: np.ndarray, figsize=(10, 8), nrows=5, ncols=4, dpi=300, title=None, save=None) -> None:
+    def transform(self, X=None):
+        if X is None:
+            X = self.X
+        return X @ self.coef_.T
+
+    def fit_transform(self, X=None, S=None):
+        self.fit(X, S)
+        return self.transform(X)
+
+    @property
+    def rf_(self):
+        B0 = np.reshape(self.coef_.T, [self.img.shape[1], self.img.shape[2], -1])
+        return np.transpose(gaussian_filter(B0, [.5, .5, 0]), (2, 0, 1))
+
+    def plot_rf(self, B0=None, figsize=(10, 8), nrows=5, ncols=4, dpi=300, title=None, save=None) -> None:
         """
         Generate a grid of RFs.
 
@@ -90,6 +111,8 @@ class ReceptiveField(SpikeLoader):
         -------
         None
         """
+        if B0 is not None:
+            B0 = self.rf_
         assert B0.shape[0] >= nrows * ncols
         rfmax = np.max(np.abs(B0))
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, dpi=dpi, constrained_layout=True)
@@ -107,24 +130,50 @@ class ReceptiveField(SpikeLoader):
 
 if __name__ == '__main__':
     sns.set()
-
-    #%% Generate RFs for PCs.
-    rf = ReceptiveField(subtract_spont=False)
-    B = rf.gen_rf(n_pcs=50)
+    loader = SpikeStimLoader()
+    # %% Generate RFs for PCs.
+    rf = ReceptiveField(loader, n_pcs=50)
+    B = rf.fit()
     rf.plot_rf(B)
 
-    # #%% Generate RFs for every neuron.
-    # B = rf.gen_rf(n_pcs=0)
-    # with open('gabor_analysis/field.pk', 'wb') as f:
-    #     pickle.dump(B, f)
+    # %% Generate RFs for every neuron.
+    rf = ReceptiveField(loader, n_pcs=0, λ=1.1)
+    rf.fit()
 
-    # #%% Split data randomly into two and fit RFs on each.
-    # trX, teX, trS, teS = rf.train_test_split()
-    #
-    # B = rf.gen_rf(trX, trS, n_pcs=0)
-    # with open(f'gabor_analysis/field1.pk', 'wb') as f:
-    #     pickle.dump(B, f)
-    #
-    # B = rf.gen_rf(teX, teS, n_pcs=0)
-    # with open(f'gabor_analysis/field2.pk', 'wb') as f:
-    #     pickle.dump(B, f)
+    with open('gabor_analysis/field.pk', 'wb') as f:
+        pickle.dump(rf.rf_, f)
+
+    # %% CV
+    trX, teX, trS, teS = loader.train_test_split()
+
+
+    def objective(λ):
+        print(f'{λ=}')
+        λ = λ[0]
+        model = ReceptiveField(loader, n_pcs=0, λ=λ).fit(trX, trS)
+        S_hat = model.transform(teX)
+        mse = mean_squared_error(teS, S_hat)
+
+        model = ReceptiveField(loader, n_pcs=0, λ=λ).fit(teX, teS)
+        S_hat = model.transform(trX)
+        mse += mean_squared_error(trS, S_hat)
+        return float(mse)
+
+
+    space = [
+        Real(0.1, 100, prior='log-uniform', name='λ')
+    ]
+
+    res_gp = gp_minimize(objective, space, n_calls=20, n_random_starts=10, random_state=439,
+                         verbose=True)
+
+    # %% Save two sets of RFs
+    trX, teX, trS, teS = loader.train_test_split()
+    rf = ReceptiveField(loader, n_pcs=0, λ=1.1)
+    rf.fit(trX, trS)
+    with open(f'gabor_analysis/field1.pk', 'wb') as f:
+        pickle.dump(rf.rf_, f)
+
+    rf.fit(teX, teS)
+    with open(f'gabor_analysis/field2.pk', 'wb') as f:
+        pickle.dump(rf.rf_, f)

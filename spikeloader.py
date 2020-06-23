@@ -1,8 +1,7 @@
-from typing import Tuple
+from typing import Tuple, Type
 
 import numpy as np
 from scipy.stats import zscore
-from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 
 
@@ -28,3 +27,11 @@ class SpikeLoader:
 
     def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
         return train_test_split(self.S, test_size=test_size, random_state=random_state)
+
+
+class Analyzer:
+    def __init__(self, loader: Type[SpikeLoader]):
+        self.loader = loader
+        self.spks, self.S = loader.spks, loader.S
+        self.xpos, self.ypos = loader.xpos, loader.ypos
+        self.frame_start, self.istim = loader.frame_start, loader.istim
