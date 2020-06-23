@@ -5,18 +5,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from utils import reduce_B_rank
+from gabor_analysis.utils import reduce_B_rank
 
 sns.set()
 
-""" Generate RFs on denoised spikes (by PCA). """
+""" Denoise RFs by PCA. """
 
 n_pca = 90
-B = pickle.loads(Path('field.pk').read_bytes())
+B = pickle.loads(Path('gabor_analysis/field.pk').read_bytes())
 B_reduced, pcs = reduce_B_rank(B, n_pca)
 
 # %% Sanity check.
-np.random.seed(535)
+np.random.seed(123)
 idx = np.random.randint(low=0, high=B.shape[2], size=10)
 fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_layout=True)
 
