@@ -5,18 +5,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from gabor_analysis.utils import reduce_B_rank
+from gabor_analysis.receptive_field import reduce_rf_rank
 
 sns.set()
 
 """ Denoise RFs by PCA. """
 
-n_pca = 90
+n_pca = 60
 B = pickle.loads(Path('gabor_analysis/field.pk').read_bytes())
-B_reduced, pcs = reduce_B_rank(B, n_pca)
+B_reduced, pcs = reduce_rf_rank(B, n_pca)
 
 # %% Sanity check.
-np.random.seed(123)
+np.random.seed(535)
 idx = np.random.randint(low=0, high=B.shape[2], size=10)
 fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_layout=True)
 

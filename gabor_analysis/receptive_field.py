@@ -128,6 +128,19 @@ class ReceptiveField(Analyzer):
         plt.show()
 
 
+def reduce_rf_rank(B: np.ndarray, n_pcs: int):
+    assert n_pcs > 0
+    B_flatten = np.reshape(B, (len(B), -1))  # n_neu x pixels.
+    adjusted_npca = min(3 * n_pcs, *B_flatten.shape)  # Increase accuracy for randomized SVD.
+    if adjusted_npca < n_pcs:
+        raise ValueError('Size of B lower than requested number of PCs.')
+
+    model = PCA(n_components=adjusted_npca)
+    B_reduced = (model.fit_transform(B_flatten) @ model.components_).reshape(B.shape)
+    pcs = model.components_.reshape((adjusted_npca, B.shape[1], B.shape[2]))
+    return B_reduced[:, :n_pcs], pcs[:n_pcs, ...]
+
+
 if __name__ == '__main__':
     sns.set()
     loader = SpikeStimLoader()
