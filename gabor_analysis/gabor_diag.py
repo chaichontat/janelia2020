@@ -9,6 +9,7 @@ import pandas as pd
 import seaborn as sns
 
 from gabor_analysis.gabor_fit import GaborFit
+from gabor_analysis.receptive_field import ReceptiveField
 from gabor_analysis.utils_jax import *
 
 
@@ -34,9 +35,10 @@ class GaborDiag(GaborFit):
 
 if __name__ == '__main__':
     sns.set()
-
-    fold1 = GaborDiag().fit(pickle.loads(Path('gabor_analysis/field1.pk').read_bytes()))
-    fold2 = GaborDiag().pca_rf(pickle.loads(Path('gabor_analysis/field2.pk').read_bytes()))
+    rf1: ReceptiveField = pickle.loads(Path('gabor_analysis/field1.pk').read_bytes())
+    fold1 = GaborDiag().fit(rf1.rf_)
+    rf2: ReceptiveField = pickle.loads(Path('gabor_analysis/field2.pk').read_bytes())
+    fold2 = GaborDiag().pca_rf(rf2.rf_)
 
     # %% PCA vs Gabor fit on test data.
 
