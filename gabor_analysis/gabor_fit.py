@@ -2,7 +2,7 @@ import pickle
 import time
 from functools import partial
 from pathlib import Path
-from typing import Tuple
+from typing import Callable, Tuple
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
@@ -13,14 +13,15 @@ from jax.numpy import cos, sin, exp
 from jax.numpy import pi as π
 from jax.random import PRNGKey, randint
 
-from gabor_analysis.receptive_field import reduce_rf_rank
+from gabor_analysis.receptive_field import reduce_rf_rank, ReceptiveField
 from gabor_analysis.utils_jax import correlate, zscore_img
 
 
 class GaborFit:
 
-    def __init__(self, n_pc=30, n_iters=1500, img_dim=(16, 9), optimizer=adam(1e-2)):
-        self.img_dim = img_dim
+    def __init__(self, n_pc: int = 30, n_iters: int = 1500, rf_dim: Tuple[int, int] = (16, 9),
+                 optimizer: Tuple[Callable, Callable, Callable] = adam(1e-2)):
+        self.rf_dim = rf_dim
         self.optimizer = optimizer
         self.n_iters = n_iters
         self.n_pc = n_pc
@@ -55,14 +56,14 @@ class GaborFit:
         for i in range(self.n_iters // 3):
             if i % 100 == 0:
                 loss, Δ = value_and_grad(GaborFit._loss_func)(get_params(params_jax), self.rf_pcaed)
-                corr = jnp.mean(correlate(self._make_gabor(self.img_dim, get_params(params_jax)), self.rf_pcaed))
+                corr = jnp.mean(correlate(self._make_gabor(self.rf_dim, get_params(params_jax)), self.rf_pcaed))
                 print(f'Step {3 * i} Corr: {corr: 0.4f} t: {time.time() - t0: 6.2f}s')
                 params_jax = update(i, Δ, params_jax)
             else:
                 params_jax = GaborFit._jax_fit(params_jax, self.rf_pcaed, get_params, update)
 
         self.params = get_params(params_jax)
-        self.rf_fit = self._make_gabor(self.img_dim, self.params)
+        self.rf_fit = self._make_gabor(self.rf_dim, self.params)
         self.corr = correlate(self.rf_fit, self.rf_pcaed)
 
         return self
@@ -161,8 +162,16 @@ class GaborFit:
             plt.savefig(save)
         plt.show()
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        del d['optimizer']
+        return d
+
 
 if __name__ == '__main__':
-    B = pickle.loads(Path(f'gabor_analysis/field.pk').read_bytes())
-    gabor = GaborFit().fit(B)
+    rf: ReceptiveField = pickle.loads(Path(f'gabor_analysis/field.pk').read_bytes())
+    gabor = GaborFit(n_pc=30, n_iters=1500, rf_dim=(16, 9), optimizer=adam(1e-2)).fit(rf.rf_)
     gabor.plot()
+
+    with open('gabor_analysis/gabor_30.pk', 'wb') as f:
+        pickle.dump(gabor, f)

@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from skopt import gp_minimize
 from skopt.space import Real
 
-from spikeloader import SpikeLoader, Analyzer
+from spikeloader import SpikeLoader
 
 
 class SpikeStimLoader(SpikeLoader):
@@ -36,10 +36,10 @@ class SpikeStimLoader(SpikeLoader):
         return train_test_split(self.X, self.S, test_size=test_size, random_state=random_state)
 
 
-class ReceptiveField(Analyzer):
+class ReceptiveField:
     def __init__(self, loader: SpikeStimLoader, n_pcs: int = 100, λ: float = 1.):
-        super().__init__(loader)
-        self.img, self.X = loader.img, loader.X
+        self.loader = loader
+        self.img_dim = self.loader.img.shape
         self.n_pcs = n_pcs
         self.λ = λ
         self.coef_ = np.empty(0)
@@ -68,9 +68,9 @@ class ReceptiveField(Analyzer):
 
         """
         if S is None:
-            S = self.S
+            S = self.loader.S
         if X is None:
-            X = self.X
+            X = self.loader.X
 
         if self.n_pcs:
             pca_model = PCA(n_components=self.n_pcs).fit(S.T)
@@ -86,7 +86,7 @@ class ReceptiveField(Analyzer):
 
     def transform(self, X=None):
         if X is None:
-            X = self.X
+            X = self.loader.X
         return X @ self.coef_.T
 
     def fit_transform(self, X=None, S=None):
@@ -95,7 +95,7 @@ class ReceptiveField(Analyzer):
 
     @property
     def rf_(self):
-        B0 = np.reshape(self.coef_.T, [self.img.shape[1], self.img.shape[2], -1])
+        B0 = np.reshape(self.coef_.T, [self.img_dim[1], self.img_dim[2], -1])
         return np.transpose(gaussian_filter(B0, [.5, .5, 0]), (2, 0, 1))
 
     def plot_rf(self, B0=None, figsize=(10, 8), nrows=5, ncols=4, dpi=300, title=None, save=None) -> None:
@@ -127,6 +127,11 @@ class ReceptiveField(Analyzer):
             plt.savefig(save)
         plt.show()
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        del d['loader']
+        return d
+
 
 def reduce_rf_rank(B: np.ndarray, n_pcs: int):
     assert n_pcs > 0
@@ -144,6 +149,7 @@ def reduce_rf_rank(B: np.ndarray, n_pcs: int):
 if __name__ == '__main__':
     sns.set()
     loader = SpikeStimLoader()
+
     # %% Generate RFs for PCs.
     rf = ReceptiveField(loader, n_pcs=50)
     B = rf.fit()
@@ -154,12 +160,10 @@ if __name__ == '__main__':
     rf.fit()
 
     with open('gabor_analysis/field.pk', 'wb') as f:
-        pickle.dump(rf.rf_, f)
+        pickle.dump(rf, f)
 
     # %% CV
     trX, teX, trS, teS = loader.train_test_split()
-
-
     def objective(λ):
         print(f'{λ=}')
         λ = λ[0]
@@ -172,7 +176,6 @@ if __name__ == '__main__':
         mse += mean_squared_error(trS, S_hat)
         return float(mse)
 
-
     space = [
         Real(0.1, 100, prior='log-uniform', name='λ')
     ]
@@ -181,12 +184,12 @@ if __name__ == '__main__':
                          verbose=True)
 
     # %% Save two sets of RFs
-    trX, teX, trS, teS = loader.train_test_split()
-    rf = ReceptiveField(loader, n_pcs=0, λ=1.1)
+    # trX, teX, trS, teS = loader.train_test_split()
     rf.fit(trX, trS)
     with open(f'gabor_analysis/field1.pk', 'wb') as f:
-        pickle.dump(rf.rf_, f)
+        pickle.dump(rf, f)
 
+    rf = ReceptiveField(loader, n_pcs=0, λ=1.1)
     rf.fit(teX, teS)
     with open(f'gabor_analysis/field2.pk', 'wb') as f:
-        pickle.dump(rf.rf_, f)
+        pickle.dump(rf, f)
