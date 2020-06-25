@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 class SpikeLoader:
     """
     Class to load suite2p npz files with stimulus information.
-    Can subtract spontaneous PCs.
+    Primary 'raw' data storage and pre-processing before analysis.
     """
 
     def __init__(self, path: str = 'superstim.npz'):
