@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from gabor_analysis.receptive_field import reduce_rf_rank
+from .receptive_field import reduce_rf_rank
 
 sns.set()
 

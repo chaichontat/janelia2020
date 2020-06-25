@@ -13,8 +13,8 @@ from jax.numpy import cos, sin, exp
 from jax.numpy import pi as π
 from jax.random import PRNGKey, randint
 
-from gabor_analysis.receptive_field import reduce_rf_rank, ReceptiveField
-from gabor_analysis.utils_jax import correlate, zscore_img
+from .receptive_field import reduce_rf_rank, ReceptiveField
+from .utils_jax import correlate, zscore_img
 
 
 class GaborFit:

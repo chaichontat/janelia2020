@@ -8,8 +8,8 @@ import seaborn as sns
 from scipy.optimize import curve_fit
 from sklearn.decomposition import PCA
 
-from analyzer import SubtractSpontAnalyzer
-from spikeloader import SpikeStimLoader
+from ..analyzer import SubtractSpontAnalyzer
+from ..spikeloader import SpikeStimLoader
 
 
 # %%

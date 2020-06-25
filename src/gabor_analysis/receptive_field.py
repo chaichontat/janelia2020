@@ -11,8 +11,8 @@ from sklearn.metrics import mean_squared_error
 from skopt import gp_minimize
 from skopt.space import Real
 
-from analyzer import Analyzer
-from spikeloader import SpikeStimLoader
+from ..analyzer import Analyzer
+from ..spikeloader import SpikeStimLoader
 
 
 class ReceptiveField(Analyzer):

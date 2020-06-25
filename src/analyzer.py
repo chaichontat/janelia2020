@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import zscore
 from sklearn.decomposition import PCA
 
-from spikeloader import SpikeLoader
+from .spikeloader import SpikeLoader
 
 
 class Analyzer:

@@ -5,17 +5,17 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from gabor_analysis.gabor_fit import GaborFit
-from spikeloader import SpikeLoader
+from .gabor_fit import GaborFit
+from ..spikeloader import SpikeLoader
 
 sns.set()
 
-#%% Load Data
+# %% Load Data
 
 f = SpikeLoader()
 g: GaborFit = pickle.loads(Path('gabor_analysis/gabor_30.pk').read_bytes())
 
-#%% xy-plane vs all params.
+# %% xy-plane vs all params.
 fig, axs = plt.subplots(ncols=3, nrows=2, figsize=(18, 10), dpi=300, constrained_layout=True)
 axs = axs.flatten()
 params_name = ['σ', 'θ', 'λ', 'γ', 'φ', 'pos_x', 'pos_y']

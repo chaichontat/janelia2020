@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from gabor_analysis.gabor_fit import GaborFit
-from gabor_analysis.receptive_field import ReceptiveField
-from gabor_analysis.utils_jax import *
+from .gabor_fit import GaborFit
+from .receptive_field import ReceptiveField
+from .utils_jax import mse, correlate
 
 
 class GaborDiag(GaborFit):
