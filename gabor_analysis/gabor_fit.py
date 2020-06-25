@@ -18,7 +18,6 @@ from gabor_analysis.utils_jax import correlate, zscore_img
 
 
 class GaborFit:
-
     def __init__(self, n_pc: int = 30, n_iters: int = 1500, rf_dim: Tuple[int, int] = (16, 9),
                  optimizer: Tuple[Callable, Callable, Callable] = adam(1e-2)):
         self.rf_dim = rf_dim

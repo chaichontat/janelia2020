@@ -11,10 +11,11 @@ from sklearn.metrics import mean_squared_error
 from skopt import gp_minimize
 from skopt.space import Real
 
+from analyzer import Analyzer
 from spikeloader import SpikeStimLoader
 
 
-class ReceptiveField:
+class ReceptiveField(Analyzer):
     def __init__(self, loader: SpikeStimLoader, n_pcs: int = 100, λ: float = 1.):
         self.loader = loader
         self.img_dim = self.loader.img.shape
@@ -105,11 +106,6 @@ class ReceptiveField:
             plt.savefig(save)
         plt.show()
 
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        del d['loader']
-        return d
-
 
 def reduce_rf_rank(B: np.ndarray, n_pcs: int):
     assert n_pcs > 0
@@ -162,7 +158,7 @@ if __name__ == '__main__':
                          verbose=True)
 
     # %% Save two sets of RFs
-    # trX, teX, trS, teS = loader.train_test_split()
+    trX, teX, trS, teS = loader.train_test_split()
     rf.fit(trX, trS)
     with open(f'gabor_analysis/field1.pk', 'wb') as f:
         pickle.dump(rf, f)
