@@ -12,5 +12,8 @@ class Analyzer:
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        del d['loader']
+        try:
+            del d['loader']
+        except KeyError:
+            pass
         return d
