@@ -1,39 +1,17 @@
 # %%
 import pickle
-from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.ndimage as ndi
 import seaborn as sns
 from scipy.ndimage import gaussian_filter
-from scipy.stats import zscore
 from sklearn.decomposition import PCA
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
 from skopt import gp_minimize
 from skopt.space import Real
 
-from spikeloader import SpikeLoader
-
-
-class SpikeStimLoader(SpikeLoader):
-    def __init__(self, *args, img_scale: float = 0.25, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.img_scale = img_scale
-
-        with np.load(self.path) as npz:
-            self.img = np.transpose(npz['img'], (2, 0, 1))  # stim x y x x
-
-        self.img = ndi.zoom(self.img, (1, self.img_scale, self.img_scale), order=1)
-
-        # Normalized.
-        self.X = np.reshape(self.img[self.istim, ...], [len(self.istim), -1])
-        self.X = zscore(self.X, axis=0) / np.sqrt(len(self.istim))  # (stim x pxs)
-
-    def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
-        return train_test_split(self.X, self.S, test_size=test_size, random_state=random_state)
+from spikeloader import SpikeStimLoader
 
 
 class ReceptiveField:
