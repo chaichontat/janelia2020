@@ -8,8 +8,6 @@ dependencies:
   - scipy
   - scikit-learn
   - scikit-image
+  - scikit-optimize
   - jupyter
   - jupyterlab
-  - pip:
-    - jax
-    - jaxlib
