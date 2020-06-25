@@ -56,7 +56,7 @@ class GaborFit:
             if i % 100 == 0:
                 loss, Δ = value_and_grad(GaborFit._loss_func)(get_params(params_jax), self.rf_pcaed)
                 corr = jnp.mean(correlate(self._make_gabor(self.rf_dim, get_params(params_jax)), self.rf_pcaed))
-                print(f'Step {3 * i} Corr: {corr: 0.4f} t: {time.time() - t0: 6.2f}s')
+                print(f'Step {3 * i: 5d} Corr: {corr: 0.4f} t: {time.time() - t0: 6.2f}s')
                 params_jax = update(i, Δ, params_jax)
             else:
                 params_jax = GaborFit._jax_fit(params_jax, self.rf_pcaed, get_params, update)
