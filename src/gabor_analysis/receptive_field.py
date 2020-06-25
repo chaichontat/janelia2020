@@ -90,7 +90,7 @@ class ReceptiveField(Analyzer):
         -------
         None
         """
-        if B0 is not None:
+        if B0 is None:
             B0 = self.rf_
         assert B0.shape[0] >= nrows * ncols
         rfmax = np.max(np.abs(B0))
