@@ -89,8 +89,19 @@ class ReceptiveField(Analyzer):
 
     @property
     def rf_(self):
-        B0 = np.reshape(self.coef_.T, [self.img_dim[1], self.img_dim[2], -1])
-        return np.transpose(gaussian_filter(B0, [.5, .5, 0]), (2, 0, 1))
+        return self._reshape_rf(self.coef_.T)
+
+    @lru_cache
+    def gen_rf_rank(self, n_pc):
+        """ This `n_pc` is NOT the same as the `n_pc` in `fit_pc`. """
+        adjusted_npca = min(3 * n_pc, *self.coef_.T.shape)  # Increase accuracy for randomized SVD.
+        if adjusted_npca < n_pc:
+            raise ValueError('Size of B lower than requested number of PCs.')
+
+        model = PCA(n_components=adjusted_npca).fit(self.coef_.T)
+
+        B_reduced = self.coef_.T @ model.components_[:n_pc, :].T @ model.components_[:n_pc, :]
+        return self._reshape_rf(B_reduced)
 
     def plot_rf(self, B0=None, figsize=(10, 8), nrows=5, ncols=4, dpi=300, title=None, save=None) -> None:
         """
@@ -123,63 +134,18 @@ class ReceptiveField(Analyzer):
         plt.show()
 
 
-def reduce_rf_rank(B: np.ndarray, n_pcs: int):
-    assert n_pcs > 0
-    B_flatten = np.reshape(B, (len(B), -1))  # n_neu x pixels.
-    adjusted_npca = min(3 * n_pcs, *B_flatten.shape)  # Increase accuracy for randomized SVD.
-    if adjusted_npca < n_pcs:
-        raise ValueError('Size of B lower than requested number of PCs.')
-
-    model = PCA(n_components=adjusted_npca)
-    B_reduced = (model.fit_transform(B_flatten) @ model.components_).reshape(B.shape)
-    pcs = model.components_.reshape((adjusted_npca, B.shape[1], B.shape[2]))
-    return B_reduced[:, :n_pcs], pcs[:n_pcs, ...]
-
-
 if __name__ == '__main__':
     sns.set()
     loader = SpikeLoader()
 
     # %% Generate RFs for PCs.
-    rf = ReceptiveField(loader, n_pcs=50)
-    B = rf.fit()
-    rf.plot_rf(B)
+    rf = ReceptiveField(loader)
+    B = rf.fit_pc(n_pc=30)
+    rf.plot_rf()
 
     # %% Generate RFs for every neuron.
-    rf = ReceptiveField(loader, n_pcs=0, λ=1.1)
-    rf.fit()
+    rf = ReceptiveField(loader)
+    rf.fit_neuron()
 
-    with open('gabor_analysis/field.pk', 'wb') as f:
-        pickle.dump(rf, f)
-
-    # %% CV
-    trX, teX, trS, teS = loader.train_test_split()
-    def objective(λ):
-        print(f'{λ=}')
-        λ = λ[0]
-        model = ReceptiveField(loader, n_pcs=0, λ=λ).fit(trX, trS)
-        S_hat = model.transform(teX)
-        mse = mean_squared_error(teS, S_hat)
-
-        model = ReceptiveField(loader, n_pcs=0, λ=λ).fit(teX, teS)
-        S_hat = model.transform(trX)
-        mse += mean_squared_error(trS, S_hat)
-        return float(mse)
-
-    space = [
-        Real(0.1, 100, prior='log-uniform', name='λ')
-    ]
-
-    res_gp = gp_minimize(objective, space, n_calls=20, n_random_starts=10, random_state=439,
-                         verbose=True)
-
-    # %% Save two sets of RFs
-    trX, teX, trS, teS = loader.train_test_split()
-    rf.fit(trX, trS)
-    with open(f'gabor_analysis/field1.pk', 'wb') as f:
-        pickle.dump(rf, f)
-
-    rf = ReceptiveField(loader, n_pcs=0, λ=1.1)
-    rf.fit(teX, teS)
-    with open(f'gabor_analysis/field2.pk', 'wb') as f:
+    with open('field.pk', 'wb') as f:
         pickle.dump(rf, f)
