@@ -1,12 +1,16 @@
 import pickle
+from pathlib import Path
 from typing import Tuple, Union
 
 import jax.numpy as np
+import matplotlib.pyplot as plt
 import numpy as onp
+import seaborn as sns
 from jax.numpy.linalg import inv, cholesky
 from sklearn.decomposition import PCA
 
 from ..analyzer import Analyzer
+from ..gabor_analysis.receptive_field import ReceptiveField
 from ..spikeloader import SpikeLoader
 
 Arrays = Union[np.DeviceArray, onp.ndarray]
@@ -28,6 +32,7 @@ class CanonicalRidge(Analyzer):
         self.λy = ly
         self.V, self.singular_values, self.Σ, self.U = 4 * [None]
         self.X_ref, self.Y_ref = np.empty(0), np.empty(0)
+        self.coef = np.empty(0)
 
     def fit(self, X: Arrays, Y: Arrays):
         assert X.shape[0] == Y.shape[0]
@@ -39,6 +44,8 @@ class CanonicalRidge(Analyzer):
         self.V = model.components_.T
         self.singular_values = self.Σ = np.diag(model.singular_values_)
         self.U = K @ self.V @ np.linalg.inv(self.Σ)
+
+        self.coef = self.calc_canon_coef(X, Y)
         return self
 
     def fit_transform(self, X: Arrays, Y: Arrays) -> Tuple[np.DeviceArray, np.DeviceArray]:
@@ -48,10 +55,6 @@ class CanonicalRidge(Analyzer):
 
     def transform(self, X: Arrays, Y: Arrays) -> Tuple[np.DeviceArray, np.DeviceArray]:
         return X @ self.U, Y @ self.V
-
-    def calc_canon_coef(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
-        X_p, Y_p = self.transform(X, Y)
-        return np.array([onp.corrcoef(X_p[:, i], Y_p[:, i])[0, 1] for i in range(self.n)])
 
     def _calc_canon_mat(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
         X, Y = np.asarray(X), np.asarray(Y)
@@ -64,17 +67,32 @@ class CanonicalRidge(Analyzer):
 
         return K
 
+    def calc_canon_coef(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
+        X_p, Y_p = self.transform(X, Y)
+        return np.array([onp.corrcoef(X_p[:, i], Y_p[:, i])[0, 1] for i in range(self.n)])
+
     def subtract_canon_comp(self, X: Arrays, Y: Arrays) -> Tuple[np.DeviceArray, np.DeviceArray]:
         X_comp, Y_comp = self.transform(X, Y)
         return X - (X_comp @ self.U.T), Y - (Y_comp @ self.V.T)
 
 
 if __name__ == '__main__':
+    sns.set()
     loader = SpikeLoader()
 
     print('Running CCA.')
     V1, V2 = loader.S[:, loader.ypos >= 210], loader.S[:, loader.ypos < 210]
-    model = CanonicalRidge().fit(V1, V2)
+    cca = CanonicalRidge().fit(V1, V2)
+    Path('cc.pk').write_bytes(pickle.dumps(cca, protocol=5))
 
-    with open('cc.pk', 'wb') as f:
-        pickle.dump(model, f)
+    fig, ax = plt.subplots()
+    ax.plot(cca.coef)
+    ax.set_title('Canonical Correlation Coefficients')
+    ax.set_xlabel('CCs')
+    ax.set_ylabel('Pearson\'s r')
+
+    V1s, V2s = cca.subtract_canon_comp(cca.X_ref, cca.Y_ref)
+    rf_v1 = ReceptiveField(loader).fit(loader.X, V1s)
+    rf_v1.plot_rf()
+    rf_v2 = ReceptiveField(loader).fit(loader.X, V2s)
+    rf_v2.plot_rf()
