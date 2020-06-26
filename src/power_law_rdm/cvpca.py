@@ -28,8 +28,8 @@ class cvPCA(SubtractSpontAnalyzer):
         self.sums_of_squares = np.empty(0)
 
     def gen_cvpca_format(self, S_nospont=None):
-        if S_nospont is not None:
-            self.S_nospont = S_nospont
+        if S_nospont is None:
+            S_nospont = self.S_nospont
 
         idx_rep, idx_notrep = self.get_repeating_idx()
 

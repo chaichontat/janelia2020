@@ -53,23 +53,6 @@ class SpikeLoader:
         return train_test_split(self.X, self.S, test_size=test_size, random_state=random_state)
 
 
-# class SpikeLoader(SpikeLoader):
-#     def __init__(self, *args, img_scale: float = 0.25, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.img_scale = img_scale
-#
-#         with np.load(self.path, mmap_mode='r') as npz:
-#             self.img = np.transpose(npz['img'], (2, 0, 1))  # stim x y x x
-#
-#         self.img = ndi.zoom(self.img, (1, self.img_scale, self.img_scale), order=1)
-#
-#         # Normalized.
-#         self.X = np.reshape(self.img[self.istim, ...], [len(self.istim), -1])
-#         self.X = zscore(self.X, axis=0) / np.sqrt(len(self.istim))  # (stim x pxs)
-#
-#     def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
-#         return train_test_split(self.X, self.S, test_size=test_size, random_state=random_state)
-
 
 if __name__ == '__main__':
     test = SpikeLoader()
