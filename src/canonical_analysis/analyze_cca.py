@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from .canonical_ridge import CanonicalRidge
-from ..gabor_analysis.receptive_field import ReceptiveField
+from ..receptive_field.rf import ReceptiveField
 from ..spikeloader import SpikeLoader
 
 sns.set()

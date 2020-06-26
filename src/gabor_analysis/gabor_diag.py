@@ -9,8 +9,8 @@ import pandas as pd
 import seaborn as sns
 
 from .gabor_fit import GaborFit
-from .receptive_field import ReceptiveField
 from .utils_jax import mse, correlate
+from ..receptive_field.rf import ReceptiveField
 
 
 class GaborDiag(GaborFit):
@@ -41,11 +41,8 @@ if __name__ == '__main__':
     fold2 = GaborDiag().pca_rf(rf2.rf_)
 
     # %% PCA vs Gabor fit on test data.
-
     cor_pc = fold1.compare_pcaed_rf(fold2)['corr']
     cor_fit = fold1.compare_fit(fold2)['corr']
-
-    sns.jointplot(cor_pc, cor_fit, kind='scatter', linewidth=0, s=10, alpha=0.1)
 
     df = pd.DataFrame([cor_pc, cor_fit]).T
     df.columns = ['PCA', 'Gabor Fit']

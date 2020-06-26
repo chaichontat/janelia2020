@@ -10,7 +10,7 @@ from jax.numpy.linalg import inv, cholesky
 from sklearn.decomposition import PCA
 
 from ..analyzer import Analyzer
-from ..gabor_analysis.receptive_field import ReceptiveField
+from ..receptive_field.rf import ReceptiveField
 from ..spikeloader import SpikeLoader
 
 Arrays = Union[np.DeviceArray, onp.ndarray]
