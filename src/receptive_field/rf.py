@@ -1,5 +1,7 @@
-# %%
+from __future__ import annotations
+
 import pickle
+from functools import lru_cache, wraps
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,23 +9,19 @@ import seaborn as sns
 from scipy.ndimage import gaussian_filter
 from sklearn.decomposition import PCA
 from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_squared_error
-from skopt import gp_minimize
-from skopt.space import Real
 
 from ..analyzer import Analyzer
 from ..spikeloader import SpikeLoader
 
 
 class ReceptiveField(Analyzer):
-    def __init__(self, loader: SpikeLoader, n_pcs: int = 100, λ: float = 1.):
+    def __init__(self, loader: SpikeLoader, λ: float = 1.):
         self.loader = loader
         self.img_dim = self.loader.img.shape
-        self.n_pcs = n_pcs
         self.λ = λ
         self.coef_ = np.empty(0)
 
-    def fit(self, X=None, S=None):
+    def _rf_decorator(func):
         """
         Generate receptive fields (RFs) by multivariate linear regression between spikes and pixels.
         Can generate RFs of each principal component (PC) OR each neuron.
@@ -46,22 +44,35 @@ class ReceptiveField(Analyzer):
             RFs in (y x x x `pca`) OR (y x x x n_stim).
 
         """
-        if S is None:
-            S = self.loader.S
-        if X is None:
-            X = self.loader.X
 
-        if self.n_pcs:
-            pca_model = PCA(n_components=self.n_pcs).fit(S.T)
-            Sp = pca_model.components_.T
-        else:
-            Sp = S
+        @wraps(func)
+        def rf_routines(self: ReceptiveField, X: np.ndarray = None, S: np.ndarray = None, *args, **kwargs):
+            if S is None:
+                S = self.loader.S
+            if X is None:
+                X = self.loader.X
 
-        # Linear regression
-        print(f'Running linear regression with ridge coefficient {self.λ: .2f}.')
-        ridge = Ridge(alpha=self.λ).fit(X, Sp)
-        self.coef_ = ridge.coef_  # n_pcs x n_pxs
-        return self
+            Sp = func(self, X, S, *args, **kwargs)
+
+            # Linear regression
+            print(f'Running linear regression with ridge coefficient {self.λ: .2f}.')
+            ridge = Ridge(alpha=self.λ).fit(X, Sp)
+            self.coef_ = ridge.coef_  # n_pcs x n_pxs
+            return self
+
+        return rf_routines
+
+    def fit(self, *args, **kwargs):
+        return self.fit_neuron(*args, **kwargs)
+
+    @_rf_decorator
+    def fit_neuron(self, X=None, S=None) -> ReceptiveField:
+        return S
+
+    @_rf_decorator
+    def fit_pc(self, X=None, S=None, n_pc=30) -> ReceptiveField:
+        pca_model = PCA(n_components=n_pc).fit(S.T)
+        return pca_model.components_.T
 
     def transform(self, X=None):
         if X is None:
@@ -69,8 +80,12 @@ class ReceptiveField(Analyzer):
         return X @ self.coef_.T
 
     def fit_transform(self, X=None, S=None):
-        self.fit(X, S)
+        self.fit_neuron(X, S)
         return self.transform(X)
+
+    def _reshape_rf(self, coef):
+        B0 = np.reshape(coef, [self.img_dim[1], self.img_dim[2], -1])
+        return np.transpose(gaussian_filter(B0, [.5, .5, 0]), (2, 0, 1))
 
     @property
     def rf_(self):
@@ -93,10 +108,11 @@ class ReceptiveField(Analyzer):
         if B0 is None:
             B0 = self.rf_
         assert B0.shape[0] >= nrows * ncols
-        rfmax = np.max(np.abs(B0))
+
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, dpi=dpi, constrained_layout=True)
         axs = axs.flatten()
         for i in range(nrows * ncols):
+            rfmax = np.max(np.abs(B0[i, :, :]))
             axs[i].imshow(B0[i, :, :], cmap='bwr', vmin=-rfmax, vmax=rfmax)
             axs[i].axis('off')
             axs[i].set_title(f'PC {i + 1}')

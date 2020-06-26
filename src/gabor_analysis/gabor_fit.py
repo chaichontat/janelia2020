@@ -14,7 +14,7 @@ from jax.numpy import pi as π
 from jax.random import PRNGKey, randint
 
 from .utils_jax import correlate, zscore_img
-from ..receptive_field.rf import reduce_rf_rank, ReceptiveField
+from ..receptive_field.rf import ReceptiveField
 
 
 class GaborFit:
@@ -32,19 +32,15 @@ class GaborFit:
         # Filled with self.fit.
         self.rf_fit, self.params, self.corr = jnp.empty(0), jnp.empty(0), jnp.empty(0)
 
-    def pca_rf(self, B):
-        self.rf_raw = B
-        self.rf_pcaed, self.rf_pcs = reduce_rf_rank(B, self.n_pc)
-        return self
-
-    def fit(self, B):
+    def fit(self, rf: ReceptiveField):
         print('Fitting Gabor.')
-        self.rf_raw = B
+        self.rf_raw = rf.rf_
+
         if self.n_pc == 0:
             print('No PCA.')
-            self.rf_pcaed = B
+            self.rf_pcaed = rf.rf_
         else:
-            self.rf_pcaed, self.rf_pcs = reduce_rf_rank(B, self.n_pc)
+            self.rf_pcaed = rf.gen_rf_rank(self.n_pc)
 
         self.rf_pcaed = zscore_img(self.rf_pcaed)
 
