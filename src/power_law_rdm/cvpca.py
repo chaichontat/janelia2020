@@ -9,12 +9,12 @@ from scipy.optimize import curve_fit
 from sklearn.decomposition import PCA
 
 from ..analyzer import SubtractSpontAnalyzer
-from ..spikeloader import SpikeStimLoader
+from ..spikeloader import SpikeLoader
 
 
 # %%
 class cvPCA(SubtractSpontAnalyzer):
-    def __init__(self, loader: SpikeStimLoader, n_spont_pc: int = 25,
+    def __init__(self, loader: SpikeLoader, n_spont_pc: int = 25,
                  n_cvpc: int = 1024, n_shuff: int = 5, seed: int = 124):
         super().__init__(loader, n_spont_pc)
         self.frame_start, self.istim = self.loader.frame_start, self.loader.istim
@@ -132,7 +132,7 @@ class cvPCA(SubtractSpontAnalyzer):
 if __name__ == '__main__':
     sns.set()
 
-    loader = SpikeStimLoader()
+    loader = SpikeLoader()
     cv = cvPCA(loader, n_shuff=2)
     rep, notrep = cv.gen_cvpca_format(cv.S_nospont)
     ypos = cv.loader.ypos

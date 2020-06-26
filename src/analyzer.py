@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 from scipy.stats import zscore
 from sklearn.decomposition import PCA
@@ -29,13 +30,21 @@ class Analyzer:
 class SubtractSpontAnalyzer(Analyzer):
     def __init__(self, loader: SpikeLoader, n_spont_pc: int = 25):
         self.loader = loader
+        self.loader_path = self.loader.path
         self.n_spont_pc = n_spont_pc
-        if self.n_spont_pc > 0:
-            print(f'Subtracting {n_spont_pc} spontaneous components.')
-            self.S_nospont = self.subtract_spont(self.loader.S)
-        else:
-            print(f'No spontaneous subtraction. `self.S_nospont` not loaded.')
-            self.S_nospont = self.loader.S
+        self._S_nospont = np.empty(0)
+
+    @property
+    def S_nospont(self):
+        if len(self._S_nospont) == 0:
+            if self.n_spont_pc > 0:
+                print(f'Subtracting {self.n_spont_pc} spontaneous components.')
+                self._S_nospont = self.subtract_spont(self.loader.S).astype(np.float32)
+            else:
+                print(f'No spontaneous subtraction. `self.S_nospont` not loaded.')
+                self._S_nospont = self.loader.S
+
+        return self._S_nospont
 
     def subtract_spont(self, S: np.ndarray) -> np.ndarray:
         """
@@ -66,6 +75,4 @@ class SubtractSpontAnalyzer(Analyzer):
         pcs_spont = pca_spont.components_.T[:, :self.n_spont_pc]  # neu x n_components
 
         proj_spont = S @ pcs_spont  # neu x n_components
-        self.S_nospont = zscore(S - proj_spont @ pcs_spont.T, axis=0)
-
-        return self.S_nospont
+        return zscore(S - proj_spont @ pcs_spont.T, axis=0)

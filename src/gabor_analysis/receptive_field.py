@@ -12,11 +12,11 @@ from skopt import gp_minimize
 from skopt.space import Real
 
 from ..analyzer import Analyzer
-from ..spikeloader import SpikeStimLoader
+from ..spikeloader import SpikeLoader
 
 
 class ReceptiveField(Analyzer):
-    def __init__(self, loader: SpikeStimLoader, n_pcs: int = 100, λ: float = 1.):
+    def __init__(self, loader: SpikeLoader, n_pcs: int = 100, λ: float = 1.):
         self.loader = loader
         self.img_dim = self.loader.img.shape
         self.n_pcs = n_pcs
@@ -122,7 +122,7 @@ def reduce_rf_rank(B: np.ndarray, n_pcs: int):
 
 if __name__ == '__main__':
     sns.set()
-    loader = SpikeStimLoader()
+    loader = SpikeLoader()
 
     # %% Generate RFs for PCs.
     rf = ReceptiveField(loader, n_pcs=50)
