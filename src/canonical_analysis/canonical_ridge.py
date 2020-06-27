@@ -31,12 +31,10 @@ class CanonicalRidge(Analyzer):
         self.λx = lx
         self.λy = ly
         self.V, self.singular_values, self.Σ, self.U = 4 * [None]
-        self.X_ref, self.Y_ref = np.empty(0), np.empty(0)
         self.coef = np.empty(0)
 
     def fit(self, X: Arrays, Y: Arrays):
         assert X.shape[0] == Y.shape[0]
-        self.X_ref, self.Y_ref = X, Y
         K = self._calc_canon_mat(X, Y)
         model = PCA(self.n).fit(K)  # Randomized SVD.
 
@@ -49,7 +47,6 @@ class CanonicalRidge(Analyzer):
         return self
 
     def fit_transform(self, X: Arrays, Y: Arrays) -> Tuple[np.DeviceArray, np.DeviceArray]:
-        self.X_ref, self.Y_ref = X, Y
         self.fit(X, Y)
         return self.transform(X, Y)
 
@@ -92,7 +89,7 @@ if __name__ == '__main__':
     ax.set_ylabel('Pearson\'s r')
 
     V1s, V2s = cca.subtract_canon_comp(cca.X_ref, cca.Y_ref)
-    rf_v1 = ReceptiveField(loader).fit_neuron(loader.X, V1s)
+    rf_v1 = ReceptiveField(loader).fit_neuron(loader.imgs_stim, V1s)
     rf_v1.plot_rf()
-    rf_v2 = ReceptiveField(loader).fit_neuron(loader.X, V2s)
+    rf_v2 = ReceptiveField(loader).fit_neuron(loader.imgs_stim, V2s)
     rf_v2.plot_rf()
