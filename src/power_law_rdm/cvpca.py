@@ -27,30 +27,6 @@ class cvPCA(SubtractSpontAnalyzer):
         self.Y = np.empty(0)
         self.sums_of_squares = np.empty(0)
 
-    def gen_cvpca_format(self, S_nospont=None):
-        if S_nospont is None:
-            S_nospont = self.S_nospont
-
-        idx_rep, idx_notrep = self.get_repeating_idx()
-
-        rep = np.transpose(S_nospont[idx_rep, :], axes=(1, 0, 2))  # 2 x time x neu
-        notrep = S_nospont[idx_notrep, :][np.newaxis, ...]
-        return rep, notrep
-
-    def get_repeating_idx(self):
-        # Get indices of repeating images.
-        unq, unq_cnt = np.unique(self.istim, return_counts=True)
-        idx_firstrep = unq[np.argwhere(unq_cnt == 2)]  # idx of repeating img
-        idx_rep = np.zeros([len(idx_firstrep), 2], dtype=np.int32)  # First and second occurrences
-        for i in range(len(idx_firstrep)):
-            idx_rep[i, :] = np.where(self.istim == idx_firstrep[i])[0]
-        assert unq.size + idx_firstrep.size == self.istim.size
-
-        idx_notrep = np.where(np.isin(np.arange(len(self.istim)), np.array(idx_rep).flatten(), invert=True))[0]
-        assert idx_notrep.size + idx_rep.size == self.istim.size
-
-        return idx_rep, idx_notrep
-
     def _cvpca_decorator(cvpca_func):
         @wraps(cvpca_func)
         def cvpca_routines(self: cvPCA, X: np.ndarray, *args, **kwargs):
@@ -129,14 +105,19 @@ class cvPCA(SubtractSpontAnalyzer):
         return popt, pcov
 
 
+def gen_cvpca_format(S_nospont, idx_rep, idx_notrep):
+    rep = np.transpose(S_nospont[idx_rep, :], axes=(1, 0, 2))  # 2 x time x neu
+    notrep = S_nospont[idx_notrep, :][np.newaxis, ...]
+    return rep, notrep
+
+
 if __name__ == '__main__':
     sns.set()
 
     loader = SpikeLoader()
     cv = cvPCA(loader, n_shuff=2)
-    rep, notrep = cv.gen_cvpca_format(cv.S_nospont)
+    rep, notrep = gen_cvpca_format(cv.S_nospont, *cv.loader.get_idx_rep(return_onetimers=True))
     ypos = cv.loader.ypos
-
 
     def cvPCA_traintest(X, Y, ax1, ax2, name=None, name_eigvec=None):
         sss = []
@@ -168,6 +149,7 @@ if __name__ == '__main__':
                                 name='V2 rep', name_eigvec=['rep stim', 'non-rep stim'])
     fig.suptitle('cvPCA Eigenspectra of PCs with neuron dims. Comparing eigvecs from rep/non-rep stim.')
     plt.show()
+
     # %% Compare V1 and V2 eigenspectrum decay between the two regions.
     fig, axs = plt.subplots(figsize=(12, 8), nrows=2, ncols=2, dpi=300, constrained_layout=True)
     ss_v1 = cvPCA_traintest(rep[:, :, ypos >= 210], rep[:, :, ypos < 210], *axs[:, 0],
