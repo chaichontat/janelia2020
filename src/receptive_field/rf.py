@@ -15,11 +15,11 @@ from ..spikeloader import SpikeLoader
 
 
 class ReceptiveField(Analyzer):
-    def __init__(self, loader: SpikeLoader, λ: float = 1.):
-        self.loader = loader
-        self.img_dim = self.loader.img.shape
+    def __init__(self, img_dim, λ: float = 1., n_pc=30):
+        self.img_dim = img_dim
         self.λ = λ
         self.coef_ = np.empty(0)
+        self.n_pc = n_pc  # Only used for `fit_pc`.
 
     def _rf_decorator(func):
         """
@@ -46,17 +46,12 @@ class ReceptiveField(Analyzer):
         """
 
         @wraps(func)
-        def rf_routines(self: ReceptiveField, X: np.ndarray = None, S: np.ndarray = None, *args, **kwargs):
-            if S is None:
-                S = self.loader.S
-            if X is None:
-                X = self.loader.X
-
-            Sp = func(self, X, S, *args, **kwargs)
+        def rf_routines(self: ReceptiveField, imgs: np.ndarray = None, S: np.ndarray = None, *args, **kwargs):
+            Sp = func(self, imgs, S, *args, **kwargs)
 
             # Linear regression
             print(f'Running linear regression with ridge coefficient {self.λ: .2f}.')
-            ridge = Ridge(alpha=self.λ).fit(X, Sp)
+            ridge = Ridge(alpha=self.λ).fit(imgs, Sp)
             self.coef_ = ridge.coef_  # n_pcs x n_pxs
             return self
 
@@ -66,25 +61,23 @@ class ReceptiveField(Analyzer):
         return self.fit_neuron(*args, **kwargs)
 
     @_rf_decorator
-    def fit_neuron(self, X=None, S=None) -> ReceptiveField:
+    def fit_neuron(self, imgs=None, S=None) -> ReceptiveField:
         return S
 
     @_rf_decorator
-    def fit_pc(self, X=None, S=None, n_pc=30) -> ReceptiveField:
-        pca_model = PCA(n_components=n_pc).fit(S.T)
+    def fit_pc(self, imgs=None, S=None) -> ReceptiveField:
+        pca_model = PCA(n_components=self.n_pc).fit(S.T)
         return pca_model.components_.T
 
-    def transform(self, X=None):
-        if X is None:
-            X = self.loader.X
-        return X @ self.coef_.T
+    def transform(self, imgs=None):
+        return imgs @ self.coef_.T
 
-    def fit_transform(self, X=None, S=None):
-        self.fit_neuron(X, S)
-        return self.transform(X)
+    def fit_transform(self, imgs=None, S=None):
+        self.fit_neuron(imgs, S)
+        return self.transform(imgs)
 
     def _reshape_rf(self, coef):
-        B0 = np.reshape(coef, [self.img_dim[1], self.img_dim[2], -1])
+        B0 = np.reshape(coef, [self.img_dim[0], self.img_dim[1], -1])
         return np.transpose(gaussian_filter(B0, [.5, .5, 0]), (2, 0, 1))
 
     @property
@@ -123,7 +116,7 @@ class ReceptiveField(Analyzer):
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, dpi=dpi, constrained_layout=True)
         axs = axs.flatten()
         for i in range(nrows * ncols):
-            rfmax = np.max(np.abs(B0[i, :, :]))
+            rfmax = np.max(np.abs(B0[:nrows * ncols, :, :]))
             axs[i].imshow(B0[i, :, :], cmap='bwr', vmin=-rfmax, vmax=rfmax)
             axs[i].axis('off')
             axs[i].set_title(f'PC {i + 1}')
@@ -136,16 +129,16 @@ class ReceptiveField(Analyzer):
 
 if __name__ == '__main__':
     sns.set()
-    loader = SpikeLoader()
+    loader = SpikeLoader('data/superstim32.npz')
 
     # %% Generate RFs for PCs.
-    rf = ReceptiveField(loader)
-    B = rf.fit_pc(n_pc=30)
+    rf = ReceptiveField(loader.imgs_raw.shape[1:])
+    B = rf.fit_pc(loader.imgs_stim, loader.S)
     rf.plot_rf()
 
     # %% Generate RFs for every neuron.
-    rf = ReceptiveField(loader)
-    rf.fit_neuron()
+    rf = ReceptiveField(loader.imgs_raw.shape[1:])
+    rf.fit_neuron(loader.imgs_stim, loader.S)
 
     with open('field.pk', 'wb') as f:
         pickle.dump(rf, f)
