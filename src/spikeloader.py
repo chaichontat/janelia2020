@@ -49,6 +49,17 @@ class SpikeLoader:
         X = np.reshape(self.img[self.istim, ...], [len(self.istim), -1])
         return zscore(X, axis=0) / np.sqrt(len(self.istim))  # (stim x pxs)
 
+    @property
+    @lru_cache
+    def idx_rep(self):
+        unq, unq_cnt = np.unique(self.istim, return_counts=True)
+        idx_firstrep = unq[np.argwhere(unq_cnt > 1)]  # idx of repeating img
+        idx = np.zeros([len(idx_firstrep), np.max(unq_cnt)], dtype=self.istim.dtype)
+        for i in range(len(idx_firstrep)):
+            curr = np.where(self.istim == idx_firstrep[i])[0]
+            idx[i, :curr.size] = curr
+        return idx
+
     def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
         return train_test_split(self.X, self.S, test_size=test_size, random_state=random_state)
 
