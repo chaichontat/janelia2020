@@ -132,12 +132,12 @@ if __name__ == '__main__':
     loader = SpikeLoader('data/superstim32.npz')
 
     # %% Generate RFs for PCs.
-    rf = ReceptiveField(loader.imgs_raw.shape[1:])
+    rf = ReceptiveField(loader.img_dim)
     B = rf.fit_pc(loader.imgs_stim, loader.S)
     rf.plot_rf()
 
     # %% Generate RFs for every neuron.
-    rf = ReceptiveField(loader.imgs_raw.shape[1:])
+    rf = ReceptiveField(loader.img_dim)
     rf.fit_neuron(loader.imgs_stim, loader.S)
 
     with open('field.pk', 'wb') as f:

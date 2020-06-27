@@ -39,29 +39,37 @@ class SpikeLoader:
 
     @property
     @lru_cache
-    def img(self):
+    def imgs_raw(self):
         with np.load(self.path, mmap_mode='r') as npz:
             return ndi.zoom(np.transpose(npz['img'], (2, 0, 1)), (1, self.img_scale, self.img_scale), order=1)
 
     @property
     @lru_cache
-    def X(self):
-        X = np.reshape(self.img[self.istim, ...], [len(self.istim), -1])
-        return zscore(X, axis=0) / np.sqrt(len(self.istim))  # (stim x pxs)
+    def img_dim(self):
+        return self.imgs_raw.shape[1:]
 
     @property
     @lru_cache
-    def idx_rep(self):
+    def imgs_stim(self):
+        X = np.reshape(self.imgs_raw[self.istim, ...], [len(self.istim), -1])
+        return zscore(X, axis=0) / np.sqrt(len(self.istim))  # (stim x pxs)
+
+    @lru_cache
+    def get_idx_rep(self, return_onetimers=False):
         unq, unq_cnt = np.unique(self.istim, return_counts=True)
         idx_firstrep = unq[np.argwhere(unq_cnt > 1)]  # idx of repeating img
         idx = np.zeros([len(idx_firstrep), np.max(unq_cnt)], dtype=self.istim.dtype)
         for i in range(len(idx_firstrep)):
             curr = np.where(self.istim == idx_firstrep[i])[0]
             idx[i, :curr.size] = curr
-        return idx
+        if return_onetimers:
+            idx_one = np.where(np.isin(np.arange(len(self.istim)), np.array(idx).flatten(), invert=True))[0]
+            return idx, idx_one
+        else:
+            return idx
 
     def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
-        return train_test_split(self.X, self.S, test_size=test_size, random_state=random_state)
+        return train_test_split(self.imgs_stim, self.S, test_size=test_size, random_state=random_state)
 
 
 
