@@ -1,4 +1,3 @@
-from pathlib import Path
 import numpy as np
 from scipy.stats import zscore
 from sklearn.decomposition import PCA
@@ -32,21 +31,29 @@ class SubtractSpontAnalyzer(Analyzer):
         self.loader = loader
         self.loader_path = self.loader.path
         self.n_spont_pc = n_spont_pc
-        self._S_nospont = np.empty(0)
+        self._S_nospont = np.empty(0)  # To allow pickling.
 
     @property
     def S_nospont(self):
         if len(self._S_nospont) == 0:
             if self.n_spont_pc > 0:
                 print(f'Subtracting {self.n_spont_pc} spontaneous components.')
-                self._S_nospont = self.subtract_spont(self.loader.S).astype(np.float32)
+                S_spont = self.get_spont()
+                self._S_nospont = self.subtract_spont(self.loader.S, S_spont).astype(np.float32)
             else:
                 print(f'No spontaneous subtraction. `self.S_nospont` not loaded.')
                 self._S_nospont = self.loader.S
 
         return self._S_nospont
 
-    def subtract_spont(self, S: np.ndarray) -> np.ndarray:
+    def get_spont(self) -> np.ndarray:
+        idx_spont = \
+            np.where(np.isin(np.arange(np.max(self.loader.frame_start) + 1), self.loader.frame_start,
+                             assume_unique=True, invert=True))[0]  # Invert indices.
+        assert idx_spont.size + self.loader.frame_start.size == self.loader.spks.shape[0]
+        return zscore(self.loader.spks[idx_spont, :], axis=0)  # time x neu
+
+    def subtract_spont(self, S: np.ndarray, S_spont: np.ndarray) -> np.ndarray:
         """
         Project S onto the spontaneous activities subspace and subtract out.
 
@@ -63,12 +70,6 @@ class SubtractSpontAnalyzer(Analyzer):
             S after subtraction
 
         """
-        idx_spont = \
-            np.where(np.isin(np.arange(np.max(self.loader.frame_start) + 1), self.loader.frame_start,
-                             assume_unique=True, invert=True))[0]  # Invert indices.
-        assert idx_spont.size + self.loader.frame_start.size == self.loader.spks.shape[0]
-
-        S_spont = zscore(self.loader.spks[idx_spont, :], axis=0)  # time x neu
 
         n_used = min(3 * self.n_spont_pc, *S_spont.shape)  # Randomized SVD.
         pca_spont = PCA(n_components=n_used).fit(S_spont)  # time x neu
