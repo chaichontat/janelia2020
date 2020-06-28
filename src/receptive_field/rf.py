@@ -15,11 +15,11 @@ from ..spikeloader import SpikeLoader
 
 
 class ReceptiveField(Analyzer):
-    def __init__(self, img_dim, λ: float = 1., n_pc=30):
+    def __init__(self, img_dim, λ: float = 1.):
         self.img_dim = img_dim
         self.λ = λ
         self.coef_ = np.empty(0)
-        self.n_pc = n_pc  # Only used for `fit_pc`.
+        self.fit_type_ = 'None'
 
     def _rf_decorator(func):
         """
@@ -52,7 +52,7 @@ class ReceptiveField(Analyzer):
             # Linear regression
             print(f'Running linear regression with ridge coefficient {self.λ: .2f}.')
             ridge = Ridge(alpha=self.λ).fit(imgs, Sp)
-            self.coef_ = ridge.coef_  # n_pcs x n_pxs
+            self.coef_ = ridge.coef_
             return self
 
         return rf_routines
@@ -61,12 +61,14 @@ class ReceptiveField(Analyzer):
         return self.fit_neuron(*args, **kwargs)
 
     @_rf_decorator
-    def fit_neuron(self, imgs=None, S=None) -> ReceptiveField:
+    def fit_neuron(self, imgs, S) -> ReceptiveField:
+        self.fit_type_ = 'neu'
         return S
 
     @_rf_decorator
-    def fit_pc(self, imgs=None, S=None) -> ReceptiveField:
-        pca_model = PCA(n_components=self.n_pc).fit(S.T)
+    def fit_pc(self, imgs, S, n_pc=30) -> ReceptiveField:
+        pca_model = PCA(n_components=n_pc).fit(S.T)
+        self.fit_type_ = 'pcs'
         return pca_model.components_.T
 
     def transform(self, imgs=None):
@@ -76,9 +78,11 @@ class ReceptiveField(Analyzer):
         self.fit_neuron(imgs, S)
         return self.transform(imgs)
 
-    def _reshape_rf(self, coef):
-        B0 = np.reshape(coef, [self.img_dim[0], self.img_dim[1], -1])
-        return np.transpose(gaussian_filter(B0, [.5, .5, 0]), (2, 0, 1))
+    def _reshape_rf(self, smooth=0.5):
+        B0 = np.reshape(self.coef_, [self.img_dim[0], self.img_dim[1], -1])
+        if smooth:
+            B0 = gaussian_filter(B0, [smooth, smooth, 0])
+        return np.transpose(B0, (2, 0, 1))
 
     @property
     def rf_(self):
@@ -133,7 +137,7 @@ if __name__ == '__main__':
 
     # %% Generate RFs for PCs.
     rf = ReceptiveField(loader.img_dim)
-    B = rf.fit_pc(loader.imgs_stim, loader.S)
+    B = rf.fit_pc(loader.imgs_stim, loader.S, n_pc=30)
     rf.plot_rf()
 
     # %% Generate RFs for every neuron.
