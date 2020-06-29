@@ -62,7 +62,7 @@ class SpikeLoader:
         istim: np.ndarray = self.istim.array.to_numpy()
         unq, unq_cnt = np.unique(istim, return_counts=True)
         idx_firstrep = unq[np.argwhere(unq_cnt > 1)]  # idx of repeating img
-        idx = np.zeros([len(idx_firstrep), np.max(unq_cnt)], dtype=istim.dtype)
+        idx = -1 * np.ones([len(idx_firstrep), np.max(unq_cnt)], dtype=istim.dtype)
         for i in range(len(idx_firstrep)):
             curr = np.where(istim == idx_firstrep[i])[0]
             idx[i, :curr.size] = curr
