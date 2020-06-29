@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pickle
 from functools import lru_cache, wraps
 
 import matplotlib.pyplot as plt
@@ -50,7 +51,6 @@ class ReceptiveField(Analyzer):
             Sp = func(self, imgs, S, *args, **kwargs)
 
             # Linear regression
-            print(f'Running linear regression with ridge coefficient {self.λ: .2f}.')
             ridge = Ridge(alpha=self.λ, random_state=np.random.RandomState(self.seed)).fit(imgs, Sp)
             self.coef_ = ridge.coef_
             return self
@@ -129,6 +129,17 @@ class ReceptiveField(Analyzer):
         if save is not None:
             plt.savefig(save)
         plt.show()
+
+
+def make_gnd_truth():
+    loader = SpikeLoader.from_hdf5('tests/data/processed.hdf5')
+    rf = ReceptiveField(loader.img_dim)
+    rf.fit_neuron(loader.imgs_stim, loader.S)
+    neu = rf.rf_.astype(np.float16)
+    rf.fit_pc(loader.imgs_stim, loader.S)
+    pc = rf.rf_.astype(np.float16)
+    with open('tests/data/rf.pk', 'wb') as f:
+        pickle.dump({'neu': neu, 'pc': pc}, f, protocol=5)
 
 
 if __name__ == '__main__':
