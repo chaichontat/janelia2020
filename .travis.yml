@@ -21,4 +21,4 @@ install:
   - conda activate test-environment
 
 script:
-  - python -m pytest tests/test_receptive_field.py
+  - python -m pytest tests
