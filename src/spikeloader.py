@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import tables
 from scipy import ndimage as ndi
 from scipy.stats import zscore
 from sklearn.model_selection import train_test_split
@@ -15,6 +14,7 @@ from .utils.utils import hdf5_load, hdf5_save_from_obj
 
 os.environ['BLOSC_NTHREADS'] = '8'
 Path_str = Union[str, Path]
+
 
 @dataclass
 class SpikeLoader:
@@ -55,7 +55,7 @@ class SpikeLoader:
     def imgs_stim(self):
         if len(self._imgs_stim) == 0:
             X = np.reshape(self.imgs[self.istim, ...], [len(self.istim), -1])
-            self._imgs_stim = zscore(X, axis=0) / np.sqrt(len(self.istim))
+            self._imgs_stim = (zscore(X, axis=0) / np.sqrt(len(self.istim))).astype(np.float32)
         return self._imgs_stim  # (stim x pxs)
 
     def get_idx_rep(self, return_onetimers=False):
@@ -78,7 +78,7 @@ class SpikeLoader:
     def save(self, path: Path_str = 'data/examples.hdf5', overwrite=False):
         arrs = ['imgs', 'spks']
         dfs = ['istim', 'pos']
-        params = ['img_scale']
+        params = ['img_scale', 'img_dim']
         return hdf5_save_from_obj(path, 'SpikeLoader', self, arrs=arrs, dfs=dfs, params=params, overwrite=overwrite)
 
     def save_processed(self, path: Path_str = 'data/processed.hdf5', overwrite=False):
@@ -104,7 +104,6 @@ class SpikeLoader:
         #     root.create_dataset('spks', data=self.spks, chunks=(None, 1000))
 
 
+
 if __name__ == '__main__':
-    test = SpikeLoader.from_hdf5()  # from_npz()  #Loader()
-    # test = Spike.from_npz()
-    # test.save_processed()
+    test = SpikeLoader.from_npz()

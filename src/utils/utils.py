@@ -9,8 +9,9 @@ def vars_to_dict(obj, vars: List[str]):
     return {var: getattr(obj, var) for var in vars}
 
 
-def hdf5_save(path, group, *, arrs: dict, dfs: dict, params: dict, overwrite=False, complib='blosc:lz4hc'):
-    filters = tables.Filters(complib=complib, complevel=5)
+def hdf5_save(path, group, *, arrs: dict, dfs: dict, params: dict, overwrite=False,
+              complib='blosc:lz4hc', complevel=9):
+    filters = tables.Filters(complib=complib, complevel=complevel)
     if not overwrite and Path(path).exists():
         raise FileExistsError('File exists and instructed to not overwrite.')
 
