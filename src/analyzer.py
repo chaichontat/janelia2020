@@ -48,9 +48,9 @@ class SubtractSpontAnalyzer(Analyzer):
 
     def get_spont(self) -> np.ndarray:
         idx_spont = \
-            np.where(np.isin(np.arange(np.max(self.loader.frame_start) + 1), self.loader.frame_start,
+            np.where(np.isin(np.arange(np.max(self.loader.istim.index) + 1), self.loader.istim.index,
                              assume_unique=True, invert=True))[0]  # Invert indices.
-        assert idx_spont.size + self.loader.frame_start.size == self.loader.spks.shape[0]
+        assert idx_spont.size + self.loader.istim.index.size == self.loader.spks.shape[0]
         return zscore(self.loader.spks[idx_spont, :], axis=0)  # time x neu
 
     def subtract_spont(self, S: np.ndarray, S_spont: np.ndarray) -> np.ndarray:

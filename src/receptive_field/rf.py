@@ -133,16 +133,16 @@ class ReceptiveField(Analyzer):
 
 if __name__ == '__main__':
     sns.set()
-    loader = SpikeLoader('data/superstim32.npz')
+    loader = SpikeLoader.from_hdf5('data/processed.hdf5')
 
     # %% Generate RFs for PCs.
     rf = ReceptiveField(loader.img_dim)
     B = rf.fit_pc(loader.imgs_stim, loader.S, n_pc=30)
     rf.plot_rf()
 
-    # %% Generate RFs for every neuron.
-    rf = ReceptiveField(loader.img_dim)
-    rf.fit_neuron(loader.imgs_stim, loader.S)
-
-    with open('field.pk', 'wb') as f:
-        pickle.dump(rf, f)
+    # # %% Generate RFs for every neuron.
+    # rf = ReceptiveField(loader.img_dim)
+    # rf.fit_neuron(loader.imgs_stim, loader.S)
+    #
+    # with open('field.pk', 'wb') as f:
+    #     pickle.dump(rf, f)

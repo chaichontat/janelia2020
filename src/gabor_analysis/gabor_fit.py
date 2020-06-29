@@ -165,7 +165,7 @@ class GaborFit:
 
 if __name__ == '__main__':
     rf: ReceptiveField = pickle.loads(Path(f'gabor_analysis/field.pk').read_bytes())
-    gabor = GaborFit(n_pc=30, n_iters=1500, rf_dim=(16, 9), optimizer=adam(1e-2)).fit(rf.rf_)
+    gabor = GaborFit(n_pc=30, n_iters=1500, rf_dim=(16, 9), optimizer=adam(1e-2)).fit(rf)
     gabor.plot()
 
     with open('gabor_analysis/gabor_30.pk', 'wb') as f:

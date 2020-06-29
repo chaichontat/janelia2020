@@ -13,11 +13,8 @@ from ..spikeloader import SpikeLoader
 
 
 # %%
-class cvPCA(SubtractSpontAnalyzer):
-    def __init__(self, loader: SpikeLoader, n_spont_pc: int = 25,
-                 n_cvpc: int = 1024, n_shuff: int = 5, seed: int = 124):
-        super().__init__(loader, n_spont_pc)
-        self.frame_start, self.istim = self.loader.frame_start, self.loader.istim
+class cvPCA:
+    def __init__(self, n_cvpc: int = 1024, n_shuff: int = 5, seed: int = 124):
 
         self.n_cvpc = n_cvpc
         self.n_shuff = n_shuff
@@ -114,10 +111,11 @@ def gen_cvpca_format(S_nospont, idx_rep, idx_notrep):
 if __name__ == '__main__':
     sns.set()
 
-    loader = SpikeLoader()
-    cv = cvPCA(loader, n_shuff=2)
-    rep, notrep = gen_cvpca_format(cv.S_nospont, *cv.loader.get_idx_rep(return_onetimers=True))
-    ypos = cv.loader.ypos
+    loader = SpikeLoader.from_npz()
+    S_nospont = SubtractSpontAnalyzer(loader).S_nospont
+    cv = cvPCA(n_shuff=2)
+    rep, notrep = gen_cvpca_format(S_nospont, *loader.get_idx_rep(return_onetimers=True))
+    ypos = loader.pos['y']
 
     def cvPCA_traintest(X, Y, ax1, ax2, name=None, name_eigvec=None):
         sss = []

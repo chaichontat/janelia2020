@@ -75,10 +75,10 @@ class CanonicalRidge(Analyzer):
 
 if __name__ == '__main__':
     sns.set()
-    loader = SpikeLoader()
+    loader = SpikeLoader.from_npz()
 
     print('Running CCA.')
-    V1, V2 = loader.S[:, loader.ypos >= 210], loader.S[:, loader.ypos < 210]
+    V1, V2 = loader.S[:, loader.pos['y'] >= 210], loader.S[:, loader.pos['y'] < 210]
     cca = CanonicalRidge().fit(V1, V2)
     Path('cc.pk').write_bytes(pickle.dumps(cca, protocol=5))
 
