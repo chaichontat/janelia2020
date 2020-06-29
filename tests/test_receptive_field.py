@@ -19,4 +19,4 @@ def test_reshape_rf(img_dim, n):
     x = np.random.rand(n, *img_dim)
     rf = ReceptiveField(img_dim)
     rf.coef_ = x.reshape([n, -1]).T
-    assert np.allclose(rf._reshape_rf(smooth=0), x)
+    assert np.allclose(rf._reshape_rf(rf.coef_, smooth=0), x)

@@ -78,9 +78,9 @@ class ReceptiveField(Analyzer):
         self.fit_neuron(imgs, S)
         return self.transform(imgs)
 
-    def _reshape_rf(self, smooth=0.5):
-        B0 = np.reshape(self.coef_, [self.img_dim[0], self.img_dim[1], -1])
-        if smooth:
+    def _reshape_rf(self, coef, smooth=0.5):
+        B0 = np.reshape(coef, [self.img_dim[0], self.img_dim[1], -1])
+        if smooth > 0:
             B0 = gaussian_filter(B0, [smooth, smooth, 0])
         return np.transpose(B0, (2, 0, 1))
 
