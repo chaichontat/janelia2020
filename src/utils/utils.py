@@ -12,6 +12,9 @@ def vars_to_dict(obj, vars: List[str]):
 def hdf5_save(path, group, *, arrs: dict, dfs: dict, params: dict, overwrite=False,
               complib='blosc:lz4hc', complevel=9):
     filters = tables.Filters(complib=complib, complevel=complevel)
+
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
     if not overwrite and Path(path).exists():
         raise FileExistsError('File exists and instructed to not overwrite.')
 

@@ -6,7 +6,9 @@ from hypothesis.extra.numpy import arrays, floating_dtypes, array_shapes
 from src.utils.utils import *
 
 
-@given(a1=arrays(floating_dtypes(), shape=array_shapes()), p1=st.integers(), p2=st.text())
+# PyTables can't deal with NULL.
+@given(a1=arrays(floating_dtypes(), shape=array_shapes()), p1=st.integers(),
+       p2=st.text(st.characters(blacklist_categories=("Cs",), blacklist_characters='\x00')))
 def test_save_load_hdf5(a1, p1, p2):
     class ForTest:
         def __init__(self, a1, p1, p2):
@@ -20,15 +22,17 @@ def test_save_load_hdf5(a1, p1, p2):
     arrs = ['a1', 'a2']
     dfs = ['d1']
     params = ['p1', 'p2']
+    path = Path('tests/data/test.hdf5')
 
-    hdf5_save_from_obj('data/test.hdf5', 'test', obj,
+    hdf5_save_from_obj(path, 'test', obj,
                        arrs=arrs, dfs=dfs, params=params, overwrite=True)
 
-    restored = hdf5_load('data/test.hdf5', 'test', arrs=arrs, dfs=dfs, params=params)
+    restored = hdf5_load('tests/data/test.hdf5', 'test', arrs=arrs, dfs=dfs, params=params)
     for arr in arrs:
         assert np.allclose(restored[arr], getattr(obj, arr), equal_nan=True)
     for df in dfs:
         assert restored[df].equals(getattr(obj, df))
     for p in params:
-        restored[p]
         assert restored[p] == getattr(obj, p)
+
+    path.unlink()
