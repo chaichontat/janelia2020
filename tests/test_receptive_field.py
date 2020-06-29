@@ -8,7 +8,7 @@ from hypothesis import settings
 
 from src.receptive_field.rf import ReceptiveField
 
-settings.register_profile('default', max_examples=10, deadline=timedelta(milliseconds=2000))
+settings.register_profile('default', max_examples=10, deadline=timedelta(milliseconds=20000))
 settings.load_profile('default')
 
 posints = partial(st.integers, min_value=1)
