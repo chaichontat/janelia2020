@@ -88,8 +88,9 @@ if __name__ == '__main__':
     ax.set_xlabel('CCs')
     ax.set_ylabel('Pearson\'s r')
 
-    V1s, V2s = cca.subtract_canon_comp(cca.X_ref, cca.Y_ref)
-    rf_v1 = ReceptiveField(loader.img_dim).fit_neuron(loader.imgs_stim, V1s)
+    # %%
+    V1s, V2s = cca.subtract_canon_comp(V1, V2)
+    rf_v1 = ReceptiveField(loader.img_dim).fit_pc(loader.imgs_stim, V1s)
     rf_v1.plot_rf()
-    rf_v2 = ReceptiveField(loader.img_dim).fit_neuron(loader.imgs_stim, V2s)
+    rf_v2 = ReceptiveField(loader.img_dim).fit_pc(loader.imgs_stim, V2s)
     rf_v2.plot_rf()
