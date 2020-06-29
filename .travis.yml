@@ -8,6 +8,13 @@ before_install:
   - echo -e "machine github.com\n  login $GITHUB_TOKEN" > ~/.netrc
   - git lfs pull
 
+cache:
+  directories:
+    - .git/lfs
+
+git:
+  lfs_skip_smudge: true
+
 install:
   - sudo apt update
   # We do this conditionally because it saves us some downloading if the
