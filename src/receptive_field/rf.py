@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pickle
 from functools import lru_cache, wraps
 
 import matplotlib.pyplot as plt
@@ -15,11 +14,12 @@ from ..spikeloader import SpikeLoader
 
 
 class ReceptiveField(Analyzer):
-    def __init__(self, img_dim, λ: float = 1.):
+    def __init__(self, img_dim, λ: float = 1., seed=841):
         self.img_dim = img_dim
         self.λ = λ
         self.coef_ = np.empty(0)
         self.fit_type_ = 'None'
+        self.seed = seed
 
     def _rf_decorator(func):
         """
@@ -51,7 +51,7 @@ class ReceptiveField(Analyzer):
 
             # Linear regression
             print(f'Running linear regression with ridge coefficient {self.λ: .2f}.')
-            ridge = Ridge(alpha=self.λ).fit(imgs, Sp)
+            ridge = Ridge(alpha=self.λ, random_state=np.random.RandomState(self.seed)).fit(imgs, Sp)
             self.coef_ = ridge.coef_
             return self
 
@@ -67,7 +67,7 @@ class ReceptiveField(Analyzer):
 
     @_rf_decorator
     def fit_pc(self, imgs, S, n_pc=30) -> ReceptiveField:
-        pca_model = PCA(n_components=n_pc).fit(S.T)
+        pca_model = PCA(n_components=n_pc, random_state=np.random.RandomState(self.seed)).fit(S.T)
         self.fit_type_ = 'pcs'
         return pca_model.components_.T
 
@@ -95,7 +95,7 @@ class ReceptiveField(Analyzer):
         if adjusted_npca < n_pc:
             raise ValueError('Size of B lower than requested number of PCs.')
 
-        model = PCA(n_components=adjusted_npca).fit(self.coef_.T)
+        model = PCA(n_components=adjusted_npca, random_state=np.random.RandomState(self.seed)).fit(self.coef_.T)
 
         B_reduced = self.coef_.T @ model.components_[:n_pc, :].T @ model.components_[:n_pc, :]
         return self._reshape_rf(B_reduced)

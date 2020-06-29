@@ -26,17 +26,18 @@ class CanonicalRidge(Analyzer):
 
     """
 
-    def __init__(self, n: int = 25, lx: float = 0.85, ly: float = 0.85):
+    def __init__(self, n: int = 25, lx: float = 0.85, ly: float = 0.85, seed: int = 87):
         self.n = n
         self.λx = lx
         self.λy = ly
         self.V, self.singular_values, self.Σ, self.U = 4 * [None]
         self.coef = np.empty(0)
+        self.seed = seed
 
     def fit(self, X: Arrays, Y: Arrays):
         assert X.shape[0] == Y.shape[0]
         K = self._calc_canon_mat(X, Y)
-        model = PCA(self.n).fit(K)  # Randomized SVD.
+        model = PCA(self.n, random_state=onp.random.RandomState(self.seed)).fit(K)  # Randomized SVD.
 
         # Based on X = UΣV^T.
         self.V = model.components_.T

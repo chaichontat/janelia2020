@@ -81,13 +81,12 @@ class cvPCA:
         X_use[1, idx_flip, :] = X[0, idx_flip, :]
         return X_use
 
-    @staticmethod
-    def _cvPCA(X, train, n_cvpc):
+    def _cvPCA(self, X, train, n_cvpc):
         assert X.shape[1] >= n_cvpc
         assert X.shape[2] >= n_cvpc
         assert X.shape[2] == train.shape[2]
 
-        model = PCA(n_components=n_cvpc).fit(train[0, ...])  # X = UΣV^T
+        model = PCA(n_components=n_cvpc, random_state=np.random.RandomState(self.seed)).fit(train[0, ...])  # X = UΣV^T
         comp = model.components_.T
         # Rotate entire dataset and extract first {n_components} dims, aka low-rank descriptions of neuronal activities.
         # Then calculate inner products between {n_components} stim vectors, aka covariance.

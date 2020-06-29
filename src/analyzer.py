@@ -27,11 +27,12 @@ class Analyzer:
 
 
 class SubtractSpontAnalyzer(Analyzer):
-    def __init__(self, loader: SpikeLoader, n_spont_pc: int = 25):
+    def __init__(self, loader: SpikeLoader, n_spont_pc: int = 25, seed: int = 437):
         self.loader = loader
         self.loader_path = self.loader.path
         self.n_spont_pc = n_spont_pc
         self._S_nospont = np.empty(0)  # To allow pickling.
+        self.seed = seed
 
     @property
     def S_nospont(self):
@@ -72,7 +73,7 @@ class SubtractSpontAnalyzer(Analyzer):
         """
 
         n_used = min(3 * self.n_spont_pc, *S_spont.shape)  # Randomized SVD.
-        pca_spont = PCA(n_components=n_used).fit(S_spont)  # time x neu
+        pca_spont = PCA(n_components=n_used, random_state=np.random.RandomState(self.seed)).fit(S_spont)  # time x neu
         pcs_spont = pca_spont.components_.T[:, :self.n_spont_pc]  # neu x n_components
 
         proj_spont = S @ pcs_spont  # neu x n_components
