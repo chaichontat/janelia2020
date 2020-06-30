@@ -12,7 +12,7 @@ from sklearn.linear_model import Ridge
 
 from ..analyzer import Analyzer
 from ..spikeloader import SpikeLoader
-from ..utils.utils import hdf5_save
+from ..utils.utils import hdf5_save, hdf5_load
 
 
 class ReceptiveField(Analyzer):
@@ -80,27 +80,16 @@ class ReceptiveField(Analyzer):
         self.fit_neuron(imgs, S)
         return self.transform(imgs)
 
-    def _reshape_rf(self, coef):
-        B0 = np.reshape(coef, [self.img_dim[0], self.img_dim[1], -1])
-        if self.smooth > 0:
-            B0 = gaussian_filter(B0, [self.smooth, self.smooth, 0])
+    @staticmethod
+    def reshape_rf(coef, img_dim, smooth=0.5):
+        B0 = np.reshape(coef, [img_dim[0], img_dim[1], -1])
+        if smooth > 0:
+            B0 = gaussian_filter(B0, [smooth, smooth, 0])
         return np.transpose(B0, (2, 0, 1))
 
     @property
     def rf_(self):
-        return self._reshape_rf(self.coef_.T)
-
-    @lru_cache
-    def gen_rf_rank(self, n_pc):
-        """ This `n_pc` is NOT the same as the `n_pc` in `fit_pc`. """
-        adjusted_npca = min(3 * n_pc, *self.coef_.T.shape)  # Increase accuracy for randomized SVD.
-        if adjusted_npca < n_pc:
-            raise ValueError('Size of B lower than requested number of PCs.')
-
-        model = PCA(n_components=adjusted_npca, random_state=np.random.RandomState(self.seed)).fit(self.coef_.T)
-
-        B_reduced = self.coef_.T @ model.components_[:n_pc, :].T @ model.components_[:n_pc, :]
-        return self._reshape_rf(B_reduced)
+        return self.reshape_rf(self.coef_.T, self.img_dim, self.smooth)
 
     def plot_rf(self, B0=None, figsize=(10, 8), nrows=5, ncols=4, dpi=300, title=None, save=None) -> None:
         """
@@ -131,6 +120,21 @@ class ReceptiveField(Analyzer):
         if save is not None:
             plt.savefig(save)
         plt.show()
+
+
+def gen_rf_rank(rfs, n_pc, seed=455):
+    """ This `n_pc` is NOT the same as the `n_pc` in `fit_pc`. """
+    rfs_shape = rfs.shape
+    coef = rfs.reshape([rfs.shape[0], -1])
+
+    adjusted_npca = min(3 * n_pc, *coef.shape)  # Increase accuracy for randomized SVD.
+    if adjusted_npca < n_pc:
+        raise ValueError('Size of B lower than requested number of PCs.')
+
+    model = PCA(n_components=adjusted_npca, random_state=np.random.RandomState(seed)).fit(coef)
+    X = model.components_[:n_pc, :]
+    B_reduced = coef @ X.T @ X
+    return ReceptiveField.reshape_rf(B_reduced.T, rfs_shape[1:])
 
 
 def make_gnd_truth():

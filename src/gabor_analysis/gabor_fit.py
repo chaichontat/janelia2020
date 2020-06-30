@@ -1,67 +1,76 @@
-import pickle
 import time
 from functools import partial
-from pathlib import Path
-from typing import Callable, Tuple
+from importlib import import_module
+from typing import Dict, Tuple
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from jax import value_and_grad, grad, jit
-from jax.experimental.optimizers import adam
 from jax.numpy import cos, sin, exp
 from jax.numpy import pi as π
 from jax.random import PRNGKey, randint
 
 from .utils_jax import correlate, zscore_img
-from ..receptive_field.rf import ReceptiveField
+from ..receptive_field.rf import gen_rf_rank
+from ..utils.utils import hdf5_load, hdf5_save_from_obj
 
 
 class GaborFit:
-    def __init__(self, n_pc: int = 30, n_iters: int = 1500, rf_dim: Tuple[int, int] = (16, 9),
-                 optimizer: Tuple[Callable, Callable, Callable] = adam(1e-2)):
-        self.rf_dim = rf_dim
+    def __init__(self, n_pc: int = 30, n_iter: int = 1500, optimizer: Dict[str, str] = None,
+                 rf_fit=None, params=None, corr=None):  # For reloading.
+        # Optimizer. See https://jax.readthedocs.io/en/latest/jax.experimental.optimizers.html.
+        if optimizer is None:
+            raise ValueError('Optimizer not named.')
         self.optimizer = optimizer
-        self.n_iters = n_iters
+        self.n_iter = n_iter
         self.n_pc = n_pc
 
         # Filled with self.pca and self.fit.
-        self.rf_raw = jnp.empty(0)
-        self.rf_pcaed, self.rf_pcs = jnp.empty(0), jnp.empty(0)
+        self.rf_pcaed = jnp.empty(0)
 
         # Filled with self.fit.
-        self.rf_fit, self.params, self.corr = jnp.empty(0), jnp.empty(0), jnp.empty(0)
+        self.rf_fit, self.params, self.corr = rf_fit, params, corr
 
-    def fit(self, rf: ReceptiveField):
+    def fit(self, rf: np.ndarray):
         print('Fitting Gabor.')
-        self.rf_raw = rf.rf_
+        assert rf.shape[1] % 2 == 0 and rf.shape[2] % 2 == 0
+
+        init, update, get_params = self._get_optimizer(self.optimizer)
+        rf_dim = (rf.shape[2] // 2, rf.shape[1] // 2)
 
         if self.n_pc == 0:
             print('No PCA.')
-            self.rf_pcaed = rf.rf_
+            self.rf_pcaed = rf
         else:
-            self.rf_pcaed = rf.gen_rf_rank(self.n_pc)
+            self.rf_pcaed = gen_rf_rank(rf, self.n_pc)
 
         self.rf_pcaed = zscore_img(self.rf_pcaed)
-
-        init, update, get_params = [jit(f) for f in self.optimizer]
         params_jax = init(GaborFit._gen_params(self.rf_pcaed))
 
         t0 = time.time()
-        for i in range(self.n_iters // 3):
+        for i in range(self.n_iter // 3):
             if i % 100 == 0:
                 loss, Δ = value_and_grad(GaborFit._loss_func)(get_params(params_jax), self.rf_pcaed)
-                corr = jnp.mean(correlate(self._make_gabor(self.rf_dim, get_params(params_jax)), self.rf_pcaed))
+                corr = jnp.mean(correlate(self._make_gabor(rf_dim, get_params(params_jax)), self.rf_pcaed))
                 print(f'Step {3 * i: 5d} Corr: {corr: 0.4f} t: {time.time() - t0: 6.2f}s')
                 params_jax = update(i, Δ, params_jax)
             else:
                 params_jax = GaborFit._jax_fit(params_jax, self.rf_pcaed, get_params, update)
 
         self.params = get_params(params_jax)
-        self.rf_fit = self._make_gabor(self.rf_dim, self.params)
+        self.rf_fit = self._make_gabor(rf_dim, self.params)
         self.corr = correlate(self.rf_fit, self.rf_pcaed)
 
         return self
+
+    @staticmethod
+    def _get_optimizer(optimizer):
+        opt_func = getattr(import_module('jax.experimental.optimizers'), optimizer['name'])
+        optimizer = {k: v for k, v in optimizer.items() if k != 'name'}
+        optimizer = opt_func(**optimizer)
+        init, update, get_params = [jit(f) for f in optimizer]
+        return init, update, get_params
 
     @staticmethod
     @partial(jit, static_argnums=(2, 3))
@@ -103,7 +112,7 @@ class GaborFit:
         # penalty_λ = 0.1 * np.mean((params[:, 2] - 1.)**2)
         penalty_γ = 0.1 * jnp.mean(jnp.maximum(0, -params[:, 3] + 0.5))
 
-        return metric + penalty_σ + penalty_γ  # + penalty_θ #+ penalty_γ
+        return metric + penalty_σ + penalty_γ
 
     @staticmethod
     def _gen_params(rf):
@@ -157,16 +166,21 @@ class GaborFit:
             plt.savefig(save)
         plt.show()
 
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        del d['optimizer']
-        return d
+    def save(self, path, **kwargs):
+        assert self.rf_fit is not None
+        arrs = ['rf_fit', 'params', 'corr']
+        params = ['n_iter', 'n_pc', 'optimizer']
+        return hdf5_save_from_obj(path, 'gabor_fit', self, arrs=arrs, params=params, **kwargs)
+
+    @classmethod
+    def from_hdf5(cls, path, load_prev_run=False, **kwargs):
+        params = ['n_iter', 'n_pc', 'optimizer']
+        arrs = ['rf_fit', 'params', 'corr'] if load_prev_run else None
+        return cls(**hdf5_load(path, 'gabor_fit', arrs=arrs, params=params, **kwargs))
 
 
-if __name__ == '__main__':
-    rf: ReceptiveField = pickle.loads(Path(f'gabor_analysis/field.pk').read_bytes())
-    gabor = GaborFit(n_pc=30, n_iters=1500, rf_dim=(16, 9), optimizer=adam(1e-2)).fit(rf)
+def make_gnd_truth():
+    rf = hdf5_load('tests/data/rf.hdf5', 'rf_gnd_truth', arrs=['neu'])['neu']
+    gabor = GaborFit(n_pc=30, n_iter=500, optimizer={'name': 'adam', 'step_size': 2e-2}).fit(rf)
     gabor.plot()
-
-    with open('gabor_analysis/gabor_30.pk', 'wb') as f:
-        pickle.dump(gabor, f)
+    gabor.save('tests/data/gabor.hdf5', overwrite=True)

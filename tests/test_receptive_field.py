@@ -1,5 +1,3 @@
-import pickle
-
 from datetime import timedelta
 from functools import partial
 
@@ -7,10 +5,9 @@ import hypothesis.strategies as st
 import numpy as np
 from hypothesis import given
 from hypothesis import settings
-from sklearn.metrics import mean_squared_error
 
-from src.spikeloader import SpikeLoader
 from src.receptive_field.rf import ReceptiveField
+from src.spikeloader import SpikeLoader
 from src.utils.utils import hdf5_load
 
 settings.register_profile('default', max_examples=10, deadline=timedelta(milliseconds=20000))
@@ -22,9 +19,8 @@ posints = partial(st.integers, min_value=1)
 @given(img_dim=st.tuples(posints(max_value=100), posints(max_value=100)), n=posints(max_value=10000))
 def test_reshape_rf(img_dim, n):
     x = np.random.rand(n, *img_dim)
-    rf = ReceptiveField(img_dim, smooth=0)
-    rf.coef_ = x.reshape([n, -1]).T
-    assert np.allclose(rf._reshape_rf(rf.coef_), x)
+    coef = x.reshape([n, -1]).T
+    assert np.allclose(ReceptiveField.reshape_rf(coef, img_dim, smooth=0), x)
 
 
 @given(st.tuples(st.integers(2, 6), st.integers(2, 6)), st.integers(100, 200), st.integers(1, 30),

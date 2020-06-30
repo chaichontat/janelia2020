@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List
 
+import numpy as np
 import pandas as pd
 import tables
 
@@ -10,7 +11,7 @@ def vars_to_dict(obj, vars: List[str]):
 
 
 def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict = None,
-              overwrite=False, complib='blosc:lz4hc', complevel=9):
+              overwrite=True, complib='blosc:lz4hc', complevel=9):
     filters = tables.Filters(complib=complib, complevel=complevel)
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -22,7 +23,7 @@ def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict 
         f.create_group(f.root, group)
         if arrs is not None:
             for k, v in arrs.items():
-                f.create_carray(f'/{group}', k, obj=v, filters=filters)
+                f.create_carray(f'/{group}', k, obj=np.asarray(v), filters=filters)
 
         if params is not None:
             for k, v in params.items():
@@ -36,7 +37,8 @@ def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict 
 def hdf5_save_from_obj(path, group, obj, *,
                        arrs: List[str] = None, dfs: List[str] = None, params: List[str] = None, **kwargs):
     locals_ = locals()
-    converted = {name: vars_to_dict(obj, locals_[name]) for name in ['arrs', 'dfs', 'params']}
+    converted = {name: vars_to_dict(obj, locals_[name])
+                 for name in ['arrs', 'dfs', 'params'] if locals_[name] is not None}
     kwargs.update(**converted)
     return hdf5_save(path, group, **kwargs)
 
