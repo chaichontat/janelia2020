@@ -62,7 +62,7 @@ def test_fit_regression():
 
     rf = ReceptiveField(loader.img_dim)
     rf.fit_neuron(loader.imgs_stim, loader.S)
-    assert np.allclose(gnd['neu'], rf.rf_, rtol=1e-2)
+    assert np.allclose(gnd['neu'], rf.rf_, atol=1e-4, rtol=1e-2)
 
     rf.fit_pc(loader.imgs_stim, loader.S)
-    assert np.allclose(gnd['pc'], rf.rf_, rtol=1e-2)
+    assert np.allclose(gnd['pc'], rf.rf_, atol=1e-4, rtol=1e-2)
