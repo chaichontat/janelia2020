@@ -44,6 +44,8 @@ def test_fit_neuron(img_dim, n_t, n_neu, seed):
 
     X = imgs.reshape([n_t, -1])
     β = rfs.reshape([n_neu, -1])
+    for i in range(n_neu):  # Prevent all 0s.
+        β[i, np.random.randint(0, img_dim[0] * img_dim[1])] = 1
 
     spks = X @ β.T
     spks += 0.01 * np.mean(spks) * np.random.normal(size=spks.shape)
@@ -60,7 +62,7 @@ def test_fit_regression():
 
     rf = ReceptiveField(loader.img_dim)
     rf.fit_neuron(loader.imgs_stim, loader.S)
-    assert np.allclose(gnd['neu'], rf.rf_.astype(np.float16))
+    assert np.allclose(gnd['neu'], rf.rf_)
 
     rf.fit_pc(loader.imgs_stim, loader.S)
-    assert np.allclose(gnd['pc'], rf.rf_.astype(np.float16))
+    assert np.allclose(gnd['pc'], rf.rf_)
