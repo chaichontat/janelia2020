@@ -13,4 +13,8 @@ dependencies:
   - scikit-learn
   - scikit-image
   - scikit-optimize
+  - pip
   - pytables
+  - pip:
+      - jax
+      - jaxlib
