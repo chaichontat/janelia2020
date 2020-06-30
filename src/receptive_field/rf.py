@@ -12,15 +12,17 @@ from sklearn.linear_model import Ridge
 
 from ..analyzer import Analyzer
 from ..spikeloader import SpikeLoader
+from ..utils.utils import hdf5_save
 
 
 class ReceptiveField(Analyzer):
-    def __init__(self, img_dim, λ: float = 1., seed=841):
+    def __init__(self, img_dim, λ: float = 1., smooth=0.5, seed=841):
         self.img_dim = img_dim
         self.λ = λ
         self.coef_ = np.empty(0)
         self.fit_type_ = 'None'
         self.seed = seed
+        self.smooth = smooth
 
     def _rf_decorator(func):
         """
@@ -78,10 +80,10 @@ class ReceptiveField(Analyzer):
         self.fit_neuron(imgs, S)
         return self.transform(imgs)
 
-    def _reshape_rf(self, coef, smooth=0.5):
+    def _reshape_rf(self, coef):
         B0 = np.reshape(coef, [self.img_dim[0], self.img_dim[1], -1])
-        if smooth > 0:
-            B0 = gaussian_filter(B0, [smooth, smooth, 0])
+        if self.smooth > 0:
+            B0 = gaussian_filter(B0, [self.smooth, self.smooth, 0])
         return np.transpose(B0, (2, 0, 1))
 
     @property
@@ -138,8 +140,7 @@ def make_gnd_truth():
     neu = rf.rf_.astype(np.float16)
     rf.fit_pc(loader.imgs_stim, loader.S)
     pc = rf.rf_.astype(np.float16)
-    with open('tests/data/rf.pk', 'wb') as f:
-        pickle.dump({'neu': neu, 'pc': pc}, f, protocol=5)
+    hdf5_save('tests/data/rf.hdf5', 'rf_gnd_truth', arrs={'neu': neu, 'pc': pc}, overwrite=True)
 
 
 if __name__ == '__main__':

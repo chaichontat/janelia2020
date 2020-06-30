@@ -11,6 +11,7 @@ from sklearn.metrics import mean_squared_error
 
 from src.spikeloader import SpikeLoader
 from src.receptive_field.rf import ReceptiveField
+from src.utils.utils import hdf5_load
 
 settings.register_profile('default', max_examples=10, deadline=timedelta(milliseconds=20000))
 settings.load_profile('default')
@@ -21,12 +22,12 @@ posints = partial(st.integers, min_value=1)
 @given(img_dim=st.tuples(posints(max_value=100), posints(max_value=100)), n=posints(max_value=10000))
 def test_reshape_rf(img_dim, n):
     x = np.random.rand(n, *img_dim)
-    rf = ReceptiveField(img_dim)
+    rf = ReceptiveField(img_dim, smooth=0)
     rf.coef_ = x.reshape([n, -1]).T
-    assert np.allclose(rf._reshape_rf(rf.coef_, smooth=0), x)
+    assert np.allclose(rf._reshape_rf(rf.coef_), x)
 
 
-@given(st.tuples(st.integers(2, 6), st.integers(2, 6)), st.integers(40, 100), st.integers(1, 30),
+@given(st.tuples(st.integers(2, 6), st.integers(2, 6)), st.integers(100, 200), st.integers(1, 30),
        st.integers(0, 1024))
 def test_fit_neuron(img_dim, n_t, n_neu, seed):
     np.random.seed(seed)
@@ -45,17 +46,17 @@ def test_fit_neuron(img_dim, n_t, n_neu, seed):
     β = rfs.reshape([n_neu, -1])
 
     spks = X @ β.T
-    spks += 0.1 * np.mean(spks) * np.random.normal(size=spks.shape)
+    spks += 0.01 * np.mean(spks) * np.random.normal(size=spks.shape)
 
     x = ReceptiveField(img_dim)
     x.fit_neuron(X, spks)
-    assert mean_squared_error(x.coef_, β) < 0.3
+    print(np.corrcoef(x.rf_.flatten(), β.flatten())[0, 1])
+    assert np.corrcoef(x.rf_.flatten(), β.flatten())[0, 1] > 0.95
 
 
 def test_fit_regression():
     loader = SpikeLoader.from_hdf5('tests/data/processed.hdf5')
-    with open('tests/data/rf.pk', 'rb') as f:
-        gnd = pickle.load(f)
+    gnd = hdf5_load('tests/data/rf.hdf5', 'rf_gnd_truth', arrs=['neu', 'pc'])
 
     rf = ReceptiveField(loader.img_dim)
     rf.fit_neuron(loader.imgs_stim, loader.S)
