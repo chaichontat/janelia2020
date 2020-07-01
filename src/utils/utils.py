@@ -11,15 +11,21 @@ def vars_to_dict(obj, vars: List[str]):
 
 
 def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict = None,
-              overwrite=True, complib='blosc:lz4hc', complevel=9):
+              overwrite=False, append=False, complib='blosc:lz4hc', complevel=9):
     filters = tables.Filters(complib=complib, complevel=complevel)
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-    if not overwrite and Path(path).exists():
-        raise FileExistsError('File exists.')
+    if append:
+        mode = 'a'
+        if not Path(path).exists():
+            print('Append but file does not exist, saving anyway.')
+    else:
+        mode = 'w'
+        if not overwrite and Path(path).exists():
+            raise FileExistsError('File exists.')
 
-    with tables.open_file(path, 'w') as f:
+    with tables.open_file(path, mode) as f:
         f.create_group(f.root, group)
         if arrs is not None:
             for k, v in arrs.items():
