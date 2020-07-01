@@ -76,8 +76,8 @@ if __name__ == '__main__':
     names = 'σθλγφxy'
 
     for i in range(7):
-        sns.distplot(fold1.params[idx_work, i], ax=axs[i], label='work')
-        sns.distplot(fold1.params[idx, i], ax=axs[i], label='fail')
+        sns.distplot(fold1.params_fit[idx_work, i], ax=axs[i], label='work')
+        sns.distplot(fold1.params_fit[idx, i], ax=axs[i], label='fail')
         axs[i].legend()
         axs[i].set_title(names[i])
     plt.show()

@@ -11,11 +11,11 @@ trX, teX, trS, teS = loader.train_test_split()
 
 
 def objective(λ):
-    rf = ReceptiveField(loader, λ=λ).fit_neuron(trX, trS)
+    rf = ReceptiveField(loader, lamda=λ).fit_neuron(trX, trS)
     S_hat = rf.transform(teX)
     mse = mean_squared_error(teS, S_hat)
 
-    rf = ReceptiveField(loader, λ=λ).fit_neuron(teX, teS)
+    rf = ReceptiveField(loader, lamda=λ).fit_neuron(teX, teS)
     S_hat = rf.transform(trX)
     mse += mean_squared_error(trS, S_hat)
     return float(mse)

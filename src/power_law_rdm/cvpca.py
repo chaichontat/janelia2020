@@ -8,21 +8,26 @@ import seaborn as sns
 from scipy.optimize import curve_fit
 from sklearn.decomposition import PCA
 
-from ..analyzer import SubtractSpontAnalyzer
+from ..analyzer import Analyzer
 from ..spikeloader import SpikeLoader
+from .subtract_spont import SubtractSpontAnalyzer
 
 
 # %%
-class cvPCA:
-    def __init__(self, n_cvpc: int = 1024, n_shuff: int = 5, seed: int = 124):
+class cvPCA(Analyzer):
 
-        self.n_cvpc = n_cvpc
+    params = ['n_pc', 'n_shuff', 'seed']
+    arrs = ['sums_of_squares']
+    dfs = None
+
+    def __init__(self, n_pc: int = 1024, n_shuff: int = 5, seed: int = 124,
+                 sums_of_squares: np.ndarray = None):
+
+        self.n_pc = n_pc
         self.n_shuff = n_shuff
         self.seed = seed
 
-        self.X = np.empty(0)
-        self.Y = np.empty(0)
-        self.sums_of_squares = np.empty(0)
+        self.sums_of_squares = sums_of_squares
 
     def _cvpca_decorator(cvpca_func):
         @wraps(cvpca_func)
@@ -37,7 +42,7 @@ class cvPCA:
             assert X.ndim == 3
             assert X.shape[0] == 2
 
-            ss = np.zeros((self.n_shuff, self.n_cvpc))  # Sums of squares.
+            ss = np.zeros((self.n_shuff, self.n_pc))  # Sums of squares.
             for k in range(self.n_shuff):
                 print(f'cvPCA Iter {k + 1}')
                 ss[k, :] = cvpca_func(self, X, *args, **kwargs)
@@ -46,7 +51,6 @@ class cvPCA:
             ss /= np.sum(ss)
 
             # Record
-            self.X = X
             self.sums_of_squares = ss
             return self.sums_of_squares
 
@@ -55,11 +59,10 @@ class cvPCA:
     @_cvpca_decorator
     def run_cvpca(self, X):
         X_swapped = self.swap_idx_between_repeats(X)
-        return self._cvPCA(X_swapped, X_swapped, self.n_cvpc)
+        return self._cvPCA(X_swapped, X_swapped)
 
     @_cvpca_decorator
     def run_cvpca_external_eigvec(self, X, Y):
-        self.Y = Y
         assert Y.ndim == 3
         X_swapped = self.swap_idx_between_repeats(X)
 
@@ -71,7 +74,7 @@ class cvPCA:
             X_use = X_swapped
             Y_use = Y
 
-        return self._cvPCA(X_use, Y_use, self.n_cvpc)
+        return self._cvPCA(X_use, Y_use)
 
     @staticmethod
     def swap_idx_between_repeats(X):
@@ -81,23 +84,23 @@ class cvPCA:
         X_use[1, idx_flip, :] = X[0, idx_flip, :]
         return X_use
 
-    def _cvPCA(self, X, train, n_cvpc):
-        assert X.shape[1] >= n_cvpc
-        assert X.shape[2] >= n_cvpc
+    def _cvPCA(self, X, train):
+        assert X.shape[1] >= self.n_pc
+        assert X.shape[2] >= self.n_pc
         assert X.shape[2] == train.shape[2]
 
-        model = PCA(n_components=n_cvpc, random_state=np.random.RandomState(self.seed)).fit(train[0, ...])  # X = UΣV^T
+        model = PCA(n_components=self.n_pc, random_state=np.random.RandomState(self.seed)).fit(train[0, ...])  # X = UΣV^T
         comp = model.components_.T
         # Rotate entire dataset and extract first {n_components} dims, aka low-rank descriptions of neuronal activities.
         # Then calculate inner products between {n_components} stim vectors, aka covariance.
         return np.sum((X[0, ...] @ comp) * (X[1, ...] @ comp), axis=0)
 
-    @staticmethod
-    def fit_powerlaw(ss, dmin=50, dmax=500):
+    def fit_powerlaw(self, dmin=50, dmax=500):
+        dmax = min(dmax, self.n_pc)
         def power_law(x, k, α):
             return k * x ** α
 
-        popt, pcov = curve_fit(power_law, np.arange(dmin, dmax), ss[dmin:dmax])
+        popt, pcov = curve_fit(power_law, np.arange(dmin, dmax), self.sums_of_squares[dmin:dmax])
         return popt, pcov
 
 
@@ -110,22 +113,25 @@ def gen_cvpca_format(S_nospont, idx_rep, idx_notrep):
 if __name__ == '__main__':
     sns.set()
 
-    loader = SpikeLoader.from_npz()
-    S_nospont = SubtractSpontAnalyzer(loader).S_nospont
-    cv = cvPCA(n_shuff=2)
+    loader = SpikeLoader.from_hdf5('tests/data/raw.hdf5')
+    spont_model = SubtractSpontAnalyzer().fit(loader.spks, loader.get_idx_spont())
+    S_nospont = spont_model.transform(loader.S)
+
+
     rep, notrep = gen_cvpca_format(S_nospont, *loader.get_idx_rep(return_onetimers=True))
     ypos = loader.pos['y']
 
     def cvPCA_traintest(X, Y, ax1, ax2, name=None, name_eigvec=None):
         sss = []
         for i, ax in enumerate([ax1, ax2]):
+            cv = cvPCA(n_shuff=2, n_pc=200)
             if i == 0:
                 ss = cv.run_cvpca(X)
             else:
                 ss = cv.run_cvpca_external_eigvec(X, Y)
 
             sss.append(ss)
-            popt, pcov = cv.fit_powerlaw(ss, dmin=20, dmax=800)
+            popt, pcov = cv.fit_powerlaw(dmin=20, dmax=800)
 
             ax.loglog(ss)
             ax.loglog(popt[0] * np.arange(1, len(ss) + 1) ** popt[1], '--')
@@ -150,9 +156,9 @@ if __name__ == '__main__':
     # %% Compare V1 and V2 eigenspectrum decay between the two regions.
     fig, axs = plt.subplots(figsize=(12, 8), nrows=2, ncols=2, dpi=300, constrained_layout=True)
     ss_v1 = cvPCA_traintest(rep[:, :, ypos >= 210], rep[:, :, ypos < 210], *axs[:, 0],
-                            name='V1', name_eigvec=['V2', 'V1'])
+                            name='V1', name_eigvec=['V1', 'V2'])
     ss_v2 = cvPCA_traintest(rep[:, :, ypos < 210], rep[:, :, ypos >= 210], *axs[:, 1],
-                            name='V1', name_eigvec=['V2', 'V1'])
+                            name='V2', name_eigvec=['V2', 'V1'])
     fig.suptitle('cvPCA Eigenspectra of PCs with stim dims. Comparing eigvecs from V1 and V2.')
     plt.show()
 
