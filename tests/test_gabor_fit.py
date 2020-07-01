@@ -15,5 +15,5 @@ def test_regression_gabor():
     gabor = GaborFit.from_hdf5('tests/data/gabor.hdf5')
     gabor.fit(rf)
 
-    gnd = GaborFit.from_hdf5('tests/data/gabor.hdf5', load_prev_run=True).rf_fit
+    gnd = GaborFit.from_hdf5('tests/data/gabor.hdf5').rf_fit
     assert np.mean((gabor.rf_fit - gnd) / gnd) < 0.05

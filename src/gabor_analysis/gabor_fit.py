@@ -12,13 +12,19 @@ from jax.numpy import pi as π
 from jax.random import PRNGKey, randint
 
 from .utils_jax import correlate, zscore_img
+from ..analyzer import Analyzer
 from ..receptive_field.rf import gen_rf_rank
 from ..utils.utils import hdf5_load, hdf5_save_from_obj
 
 
-class GaborFit:
+class GaborFit(Analyzer):
+
+    params = ['n_iter', 'n_pc', 'optimizer']
+    arrs = ['rf_fit', 'params_fit', 'corr']
+    dfs = None
+
     def __init__(self, n_pc: int = 30, n_iter: int = 1500, optimizer: Dict[str, str] = None,
-                 rf_fit=None, params=None, corr=None):  # For reloading.
+                 rf_fit=None, params_fit=None, corr=None):  # For reloading.
         # Optimizer. See https://jax.readthedocs.io/en/latest/jax.experimental.optimizers.html.
         if optimizer is None:
             raise ValueError('Optimizer not named.')
@@ -30,7 +36,7 @@ class GaborFit:
         self.rf_pcaed = jnp.empty(0)
 
         # Filled with self.fit.
-        self.rf_fit, self.params, self.corr = rf_fit, params, corr
+        self.rf_fit, self.params_fit, self.corr = rf_fit, params_fit, corr
 
     def fit(self, rf: np.ndarray):
         print('Fitting Gabor.')
@@ -58,8 +64,8 @@ class GaborFit:
             else:
                 params_jax = GaborFit._jax_fit(params_jax, self.rf_pcaed, get_params, update)
 
-        self.params = get_params(params_jax)
-        self.rf_fit = self._make_gabor(rf_dim, self.params)
+        self.params_fit = get_params(params_jax)
+        self.rf_fit = self._make_gabor(rf_dim, self.params_fit)
         self.corr = correlate(self.rf_fit, self.rf_pcaed)
 
         return self
@@ -165,18 +171,6 @@ class GaborFit:
         if save:
             plt.savefig(save)
         plt.show()
-
-    def save(self, path, **kwargs):
-        assert self.rf_fit is not None
-        arrs = ['rf_fit', 'params', 'corr']
-        params = ['n_iter', 'n_pc', 'optimizer']
-        return hdf5_save_from_obj(path, 'gabor_fit', self, arrs=arrs, params=params, **kwargs)
-
-    @classmethod
-    def from_hdf5(cls, path, load_prev_run=False, **kwargs):
-        params = ['n_iter', 'n_pc', 'optimizer']
-        arrs = ['rf_fit', 'params', 'corr'] if load_prev_run else None
-        return cls(**hdf5_load(path, 'gabor_fit', arrs=arrs, params=params, **kwargs))
 
 
 def make_gnd_truth():

@@ -72,6 +72,13 @@ class SpikeLoader:
         else:
             return idx
 
+    def get_idx_spont(self) -> np.ndarray:
+        idx_spont = \
+            np.where(np.isin(np.arange(np.max(self.istim.index) + 1), self.istim.index,
+                             assume_unique=True, invert=True))[0]  # Invert indices.
+        assert idx_spont.size + self.istim.index.size == self.spks.shape[0]
+        return idx_spont
+
     def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
         return train_test_split(self.imgs_stim, self.S, test_size=test_size, random_state=random_state)
 

@@ -38,8 +38,8 @@ plt.show()
 # %% CV
 loader = SpikeLoader()
 trX, teX, trS, teS = loader.train_test_split()
-rf_1 = ReceptiveField(loader.img_dim, λ=1.1).fit_neuron(trX, trS)
-rf_2 = ReceptiveField(loader.img_dim, λ=1.1).fit_neuron(teX, teS)
+rf_1 = ReceptiveField(loader.img_dim, lamda=1.1).fit_neuron(trX, trS)
+rf_2 = ReceptiveField(loader.img_dim, lamda=1.1).fit_neuron(teX, teS)
 
 
 # %%

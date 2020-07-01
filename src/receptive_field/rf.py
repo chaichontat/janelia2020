@@ -16,13 +16,20 @@ from ..utils.utils import hdf5_save, hdf5_load
 
 
 class ReceptiveField(Analyzer):
-    def __init__(self, img_dim, λ: float = 1., smooth=0.5, seed=841):
+
+    params = ['img_dim', 'lamda', 'smooth', 'seed', 'fit_type_']
+    arrs = ['coef_']
+    dfs = None
+
+    def __init__(self, img_dim, lamda: float = 1., smooth=0.5, seed=841,
+                 fit_type_: str = None, coef_: np.ndarray = None):
         self.img_dim = img_dim
-        self.λ = λ
-        self.coef_ = np.empty(0)
-        self.fit_type_ = 'None'
+        self.lamda = lamda
         self.seed = seed
         self.smooth = smooth
+
+        self.coef_ = coef_
+        self.fit_type_ = fit_type_
 
     def _rf_decorator(func):
         """
@@ -53,7 +60,7 @@ class ReceptiveField(Analyzer):
             Sp = func(self, imgs, S, *args, **kwargs)
 
             # Linear regression
-            ridge = Ridge(alpha=self.λ, random_state=np.random.RandomState(self.seed)).fit(imgs, Sp)
+            ridge = Ridge(alpha=self.lamda, random_state=np.random.RandomState(self.seed)).fit(imgs, Sp)
             self.coef_ = ridge.coef_
             return self
 
