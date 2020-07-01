@@ -1,11 +1,17 @@
-import numpy as np
-from scipy.stats import zscore
-from sklearn.decomposition import PCA
+from abc import abstractmethod
+from pathlib import Path
+from typing import List, Union
 
-from .spikeloader import SpikeLoader
+from .utils.utils import hdf5_load, hdf5_save_from_obj
+
+Path_s = Union[Path, str]
 
 
 class Analyzer:
+    arrs: List[str]
+    dfs: List[str]
+    params: List[str]
+
     """
     Abstract class for data analysis from raw spike data in the form of `SpikeLoader` instance.
     Prevent `SpikeLoader` from being pickled along with the instance.
@@ -16,65 +22,31 @@ class Analyzer:
     Any saved analysis should include proper context.
 
     """
+    @abstractmethod
+    def __init__(self, *args, **kwargs):
+        pass
 
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        try:
-            del d['loader']
-        except KeyError:
-            pass
-        return d
+    @abstractmethod
+    def fit(self, *args, **kwargs):
+        """ Fit `X` according to params. """
 
+    def save(self, path: Path_s, **kwargs):
+        return hdf5_save_from_obj(path, type(self).__name__, self,
+                                  arrs=self.arrs, dfs=self.dfs, params=self.params, **kwargs)
 
-class SubtractSpontAnalyzer(Analyzer):
-    def __init__(self, loader: SpikeLoader, n_spont_pc: int = 25, seed: int = 437):
-        self.loader = loader
-        self.loader_path = self.loader.path
-        self.n_spont_pc = n_spont_pc
-        self._S_nospont = np.empty(0)  # To allow pickling.
-        self.seed = seed
+    @classmethod
+    def from_hdf5(cls, path: Path_s, load_prev_run: bool = True, **kwargs):
+        arrs = cls.arrs if load_prev_run else None
+        dfs = cls.dfs if load_prev_run else None
+        return cls(**hdf5_load(path, cls.__name__,
+                               arrs=arrs, dfs=dfs, params=cls.params, **kwargs))
 
-    @property
-    def S_nospont(self):
-        if len(self._S_nospont) == 0:
-            if self.n_spont_pc > 0:
-                print(f'Subtracting {self.n_spont_pc} spontaneous components.')
-                S_spont = self.get_spont()
-                self._S_nospont = self.subtract_spont(self.loader.S, S_spont).astype(np.float32)
-            else:
-                print(f'No spontaneous subtraction. `self.S_nospont` not loaded.')
-                self._S_nospont = self.loader.S
-
-        return self._S_nospont
-
-    def get_spont(self) -> np.ndarray:
-        idx_spont = \
-            np.where(np.isin(np.arange(np.max(self.loader.istim.index) + 1), self.loader.istim.index,
-                             assume_unique=True, invert=True))[0]  # Invert indices.
-        assert idx_spont.size + self.loader.istim.index.size == self.loader.spks.shape[0]
-        return zscore(self.loader.spks[idx_spont, :], axis=0)  # time x neu
-
-    def subtract_spont(self, S: np.ndarray, S_spont: np.ndarray) -> np.ndarray:
-        """
-        Project S onto the spontaneous activities subspace and subtract out.
-
-        Parameters
-        ----------
-        S: np.ndarray
-            Non-spontaneous spiking data (stim x neu).
-        n_components: int
-            Number of spontaneous PCs to subtract.
-
-        Returns
-        -------
-        S_corr: np.ndarray
-            S after subtraction
-
-        """
-
-        n_used = min(3 * self.n_spont_pc, *S_spont.shape)  # Randomized SVD.
-        pca_spont = PCA(n_components=n_used, random_state=np.random.RandomState(self.seed)).fit(S_spont)  # time x neu
-        pcs_spont = pca_spont.components_.T[:, :self.n_spont_pc]  # neu x n_components
-
-        proj_spont = S @ pcs_spont  # neu x n_components
-        return zscore(S - proj_spont @ pcs_spont.T, axis=0)
+# if __name__ == '__main__':
+#     test = SpikeLoader.from_hdf5('tests/data/raw.hdf5')
+#     s = SubtractSpontAnalyzer()
+#     s.fit(test.spks, test.get_idx_spont())
+#     S_out = s.transform(test.S)
+#     s.save('tests/data/purim.hdf5', overwrite=True)
+#
+#     x = SubtractSpontAnalyzer.from_hdf5('tests/data/purim.hdf5', load_prev_run=True)
+#     X_out = x.transform(test.S)
