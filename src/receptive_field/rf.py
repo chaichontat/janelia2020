@@ -18,11 +18,11 @@ from ..utils.utils import hdf5_save, hdf5_load
 class ReceptiveField(Analyzer):
 
     params = ['img_dim', 'lamda', 'smooth', 'seed', 'fit_type_']
-    arrs = ['coef_']
+    arrs = ['coef_', 'transformed']
     dfs = None
 
     def __init__(self, img_dim, lamda: float = 1., smooth=0.5, seed=841,
-                 fit_type_: str = None, coef_: np.ndarray = None):
+                 fit_type_: str = None, coef_: np.ndarray = None, transformed=None):
         self.img_dim = img_dim
         self.lamda = lamda
         self.seed = seed
@@ -30,6 +30,7 @@ class ReceptiveField(Analyzer):
 
         self.coef_ = coef_
         self.fit_type_ = fit_type_
+        self.transformed = transformed
 
     def _rf_decorator(func):
         """
@@ -81,7 +82,8 @@ class ReceptiveField(Analyzer):
         return pca_model.components_.T
 
     def transform(self, imgs=None):
-        return imgs @ self.coef_.T
+        self.transformed = imgs @ self.coef_.T
+        return self.transformed
 
     def fit_transform(self, imgs=None, S=None):
         self.fit_neuron(imgs, S)
@@ -151,7 +153,7 @@ def make_gnd_truth():
     neu = rf.rf_.astype(np.float16)
     rf.fit_pc(loader.imgs_stim, loader.S)
     pc = rf.rf_.astype(np.float16)
-    hdf5_save('tests/data/rf.hdf5', 'rf_gnd_truth', arrs={'neu': neu, 'pc': pc}, overwrite=True)
+    hdf5_save('tests/data/regression_tests.hdf5', 'ReceptiveField', arrs={'neu': neu, 'pc': pc}, overwrite=True)
 
 
 if __name__ == '__main__':

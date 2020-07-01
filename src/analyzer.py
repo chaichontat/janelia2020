@@ -30,9 +30,13 @@ class Analyzer:
     def fit(self, *args, **kwargs):
         """ Fit `X` according to params. """
 
-    def save(self, path: Path_s, **kwargs):
+    def save(self, path: Path_s, save_transformed=True, **kwargs):
+        arrs = [arr for arr in self.arrs if 'transformed' not in arr] if not save_transformed else self.arrs
         return hdf5_save_from_obj(path, type(self).__name__, self,
-                                  arrs=self.arrs, dfs=self.dfs, params=self.params, **kwargs)
+                                  arrs=arrs, dfs=self.dfs, params=self.params, **kwargs)
+
+    def save_append(self, *args, **kwargs):
+        return self.save(*args, append=True, **kwargs)
 
     @classmethod
     def from_hdf5(cls, path: Path_s, load_prev_run: bool = True, **kwargs):
