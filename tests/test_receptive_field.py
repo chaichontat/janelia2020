@@ -54,7 +54,7 @@ def test_fit_neuron(img_dim, n_t, n_neu, seed):
 
 def test_fit_regression():
     loader = SpikeLoader.from_hdf5('tests/data/processed.hdf5')
-    gnd = hdf5_load('tests/data/rf.hdf5', 'rf_gnd_truth', arrs=['neu', 'pc'])
+    gnd = hdf5_load('tests/data/regression_test_data.hdf5', 'ReceptiveField', arrs=['neu', 'pc'])
 
     rf = ReceptiveField(loader.img_dim)
     rf.fit_neuron(loader.imgs_stim, loader.S)

@@ -173,8 +173,8 @@ class GaborFit(Analyzer):
         plt.show()
 
 
-def make_gnd_truth():
-    rf = hdf5_load('tests/data/rf.hdf5', 'rf_gnd_truth', arrs=['neu'])['neu']
+def make_regression_truth():
+    rf = hdf5_load('tests/data/regression_test_data.hdf5', 'ReceptiveField', arrs=['neu'])['neu']
     gabor = GaborFit(n_pc=30, n_iter=500, optimizer={'name': 'adam', 'step_size': 2e-2}).fit(rf)
     gabor.plot()
-    gabor.save('tests/data/gabor.hdf5', overwrite=True)
+    gabor.save_append('tests/data/regression_test_data.hdf5')

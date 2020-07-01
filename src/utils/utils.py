@@ -11,7 +11,7 @@ def vars_to_dict(obj, vars: List[str]):
 
 
 def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict = None,
-              overwrite=False, append=False, complib='blosc:lz4hc', complevel=9):
+              overwrite=False, append=False, overwrite_node=False, complib='blosc:lz4hc', complevel=9):
     filters = tables.Filters(complib=complib, complevel=complevel)
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -26,7 +26,15 @@ def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict 
             raise FileExistsError('File exists.')
 
     with tables.open_file(path, mode) as f:
-        f.create_group(f.root, group)
+        try:
+            f.create_group(f.root, group)
+        except tables.exceptions.NodeError as e:  # Node exists.
+            if overwrite_node:
+                f.remove_node(f.root, group, recursive=True)
+                f.create_group(f.root, group)
+            else:
+                raise Exception('Node already exists. Consider setting `overwrite_node=True` when saving.')
+
         if arrs is not None:
             for k, v in arrs.items():
                 f.create_carray(f'/{group}', k, obj=np.asarray(v), filters=filters)

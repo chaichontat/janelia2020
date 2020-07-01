@@ -146,14 +146,15 @@ def gen_rf_rank(rfs, n_pc, seed=455):
     return ReceptiveField.reshape_rf(B_reduced.T, rfs_shape[1:])
 
 
-def make_gnd_truth():
+def make_regression_truth():
     loader = SpikeLoader.from_hdf5('tests/data/processed.hdf5')
     rf = ReceptiveField(loader.img_dim)
     rf.fit_neuron(loader.imgs_stim, loader.S)
-    neu = rf.rf_.astype(np.float16)
+    neu = rf.rf_
     rf.fit_pc(loader.imgs_stim, loader.S)
-    pc = rf.rf_.astype(np.float16)
-    hdf5_save('tests/data/regression_tests.hdf5', 'ReceptiveField', arrs={'neu': neu, 'pc': pc}, overwrite=True)
+    pc = rf.rf_
+    hdf5_save('tests/data/regression_test_data.hdf5', 'ReceptiveField', arrs={'neu': neu, 'pc': pc},
+              append=True, overwrite_node=True)
 
 
 if __name__ == '__main__':
