@@ -9,7 +9,7 @@ from scipy import ndimage as ndi
 from scipy.stats import zscore
 from sklearn.model_selection import train_test_split
 
-from .utils.utils import hdf5_load, hdf5_save_from_obj
+from .utils.io import hdf5_load, hdf5_save_from_obj
 
 
 os.environ['BLOSC_NTHREADS'] = '8'
@@ -48,7 +48,7 @@ class SpikeLoader:
     @property
     def S(self):
         if len(self._S) == 0:
-            self._S = zscore(self.spks[self.istim.index, :], axis=0)
+            self._S = zscore(self.spks[self.istim.index, :], axis=0).astype(np.float32)
         return self._S
 
     @property
@@ -109,6 +109,14 @@ class SpikeLoader:
         #     pos.create_dataset('y', data=np.array(self.pos['y']), chunks=False)
         #
         #     root.create_dataset('spks', data=self.spks, chunks=(None, 1000))
+
+
+def convert_x(xpos, offset=5, width=473, gap=177):  # Total 650.
+    x = xpos.copy()
+    x -= offset
+    z = x // (width + gap)
+    x = x % (width + gap)
+    return x, z
 
 
 
