@@ -27,8 +27,8 @@ fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_
 axs = np.hstack([axs[0:2, :], axs[2:4, :]]).T
 for i in range(10):
     scale = np.max(np.abs([B[idx[i], :, :], B_reduced[idx[i], :, :]]))
-    axs[i, 0].imshow(B[idx[i], :, :], cmap='bwr', vmin=-scale, vmax=scale)
-    axs[i, 1].imshow(B_reduced[idx[i], :, :], cmap='bwr', vmin=-scale, vmax=scale)
+    axs[i, 0].imshow(B[idx[i], :, :], cmap='twilight_shifted', vmin=-scale, vmax=scale)
+    axs[i, 1].imshow(B_reduced[idx[i], :, :], cmap='twilight_shifted', vmin=-scale, vmax=scale)
     axs[i, 0].axis('off')
     axs[i, 1].axis('off')
 

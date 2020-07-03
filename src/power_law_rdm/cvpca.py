@@ -178,7 +178,7 @@ if __name__ == '__main__':
 #     test = make_percentile(np.corrcoef(S_nospont[:, idx_rep[:, i]].T))
 #     test = test[:, x.flatten().argsort()]
 #     test = test[x.flatten().argsort(), :]
-#     u = axs[i].imshow(test, cmap='bwr')
+#     u = axs[i].imshow(test, cmap='twilight_shifted')
 #     axs[i].grid(0)
 #     axs[i].set_title(f'Repeat {i+1}')
 #     fig.colorbar(u, ax=axs[i])
@@ -205,7 +205,7 @@ if __name__ == '__main__':
 #     test = make_percentile(np.corrcoef(Sspont.T[:, idxs[i]]))
 #     test = test[:, x.flatten().argsort()]
 #     test = test[x.flatten().argsort(), :]
-#     u = axs[i].imshow(test, cmap='bwr')
+#     u = axs[i].imshow(test, cmap='twilight_shifted')
 #     axs[i].grid(0)
 #     axs[i].set_title(f'V{i+1}')
 #     fig.colorbar(u, ax=axs[i])

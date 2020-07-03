@@ -119,11 +119,18 @@ class ReceptiveField(Analyzer):
 
         fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, dpi=dpi, constrained_layout=True)
         axs = axs.flatten()
+
+        n_fig = nrows * ncols
+        if random:
+            idx = sorted(np.random.RandomState(self.seed).randint(low=0, high=len(self.rf_), size=n_fig))
+        else:
+            idx = np.arange(n_fig)
+
         for i in range(nrows * ncols):
             rfmax = np.max(np.abs(B0[:nrows * ncols, :, :]))
-            axs[i].imshow(B0[i, :, :], cmap='bwr', vmin=-rfmax, vmax=rfmax)
+            axs[i].imshow(B0[idx[i], :, :], cmap="twilight_shifted", vmin=-rfmax, vmax=rfmax)
             axs[i].axis('off')
-            axs[i].set_title(f'PC {i + 1}')
+            axs[i].set_title(f'{self.fit_type_} {idx[i]}')
         if title is not None:
             fig.suptitle(title)
         if save is not None:

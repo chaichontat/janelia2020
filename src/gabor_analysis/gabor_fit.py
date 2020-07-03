@@ -148,25 +148,25 @@ class GaborFit(Analyzer):
 
     def plot(self, seed: int = 40, save: str = None) -> None:
         rng = PRNGKey(seed)
-        idx = randint(rng, shape=(10,), minval=0, maxval=self.rf_fit.shape[0])
+        idx = sorted(randint(rng, shape=(10,), minval=0, maxval=self.rf_fit.shape[0]))
 
         fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_layout=True)
         axs = np.hstack([axs[0:2, :], axs[2:4, :]]).T
 
         for i in range(10):
             scale = jnp.max(jnp.abs(self.rf_fit[idx[i], ...]))
-            axs[i, 0].imshow(self.rf_fit[idx[i], ...], cmap='bwr', vmin=-scale, vmax=scale)
+            axs[i, 0].imshow(self.rf_fit[idx[i], ...], cmap='twilight_shifted', vmin=-scale, vmax=scale)
             axs[i, 0].set_title(f'Neuron {idx[i]}\n'
                                 f'Pearson\'s r: {self.corr[idx[i]]: 0.3f}')
             axs[i, 0].axis('off')
 
             scale = jnp.max(jnp.abs(self.rf_pcaed[idx[i], ...]))
-            axs[i, 1].imshow(self.rf_pcaed[idx[i], ...], cmap='bwr', vmin=-scale, vmax=scale)
+            axs[i, 1].imshow(self.rf_pcaed[idx[i], ...], cmap='twilight_shifted', vmin=-scale, vmax=scale)
             axs[i, 1].axis('off')
 
         fig.suptitle(
             f'Randomly selected 10 neurons from {self.rf_fit.shape[0]} neurons. '
-            f'\n Top {self.n_pc} PCs RF with corr coef. L: Generated, R: Raw.')
+            f'\n Top {self.n_pc} PCs RF with corr coef')
 
         if save:
             plt.savefig(save)
