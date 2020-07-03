@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import pickle
-from functools import lru_cache, wraps
+from functools import wraps
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -67,17 +66,18 @@ class ReceptiveField(Analyzer):
         return rf_routines
 
     def fit(self, *args, **kwargs):
+        print('Fitting neuron by default. To fit PC, run `fit_pc`.')
         return self.fit_neuron(*args, **kwargs)
 
     @_rf_decorator
     def fit_neuron(self, imgs, S) -> ReceptiveField:
-        self.fit_type_ = 'neu'
+        self.fit_type_ = 'Neuron'
         return S
 
     @_rf_decorator
     def fit_pc(self, imgs, S, n_pc=30) -> ReceptiveField:
         pca_model = PCA(n_components=n_pc, random_state=np.random.RandomState(self.seed)).fit(S.T)
-        self.fit_type_ = 'pcs'
+        self.fit_type_ = 'PC'
         return pca_model.components_.T
 
     def transform(self, imgs=None):
@@ -99,7 +99,8 @@ class ReceptiveField(Analyzer):
     def rf_(self):
         return self.reshape_rf(self.coef_.T, self.img_dim, self.smooth)
 
-    def plot_rf(self, B0=None, figsize=(10, 8), nrows=5, ncols=4, dpi=300, title=None, save=None) -> None:
+    def plot(self, B0=None, random=False,
+             figsize=(10, 8), nrows=5, ncols=4, dpi=300, title=None, save=None) -> None:
         """
         Generate a grid of RFs.
 
@@ -169,12 +170,10 @@ if __name__ == '__main__':
 
     # %% Generate RFs for PCs.
     rf = ReceptiveField(loader.img_dim)
-    B = rf.fit_pc(loader.imgs_stim, loader.S, n_pc=30)
-    rf.plot_rf()
+    rf.fit_pc(loader.imgs_stim, loader.S, n_pc=30)
+    rf.plot()
 
-    # # %% Generate RFs for every neuron.
-    # rf = ReceptiveField(loader.img_dim)
-    # rf.fit_neuron(loader.imgs_stim, loader.S)
-    #
-    # with open('field.pk', 'wb') as f:
-    #     pickle.dump(rf, f)
+    # %% Generate RFs for every neuron.
+    rf = ReceptiveField(loader.img_dim)
+    rf.fit_neuron(loader.imgs_stim, loader.S)
+    rf.plot(random=True)
