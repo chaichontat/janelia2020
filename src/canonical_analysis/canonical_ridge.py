@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 from ..analyzer import Analyzer
 from ..receptive_field.rf import ReceptiveField
 from ..spikeloader import SpikeLoader
-from ..utils.utils import hdf5_save
+from ..utils.io import hdf5_save
 
 Arrays = Union[np.DeviceArray, onp.ndarray]
 

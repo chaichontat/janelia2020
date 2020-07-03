@@ -3,7 +3,7 @@ import numpy as np
 from src.canonical_analysis.canonical_ridge import CanonicalRidge
 from src.receptive_field.rf import ReceptiveField
 from src.spikeloader import SpikeLoader
-from src.utils.utils import hdf5_load
+from src.utils.io import hdf5_load
 
 
 def test_regression_canonical_ridge():

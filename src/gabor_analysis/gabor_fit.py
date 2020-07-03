@@ -14,7 +14,7 @@ from jax.random import PRNGKey, randint
 from .utils_jax import correlate, zscore_img
 from ..analyzer import Analyzer
 from ..receptive_field.rf import gen_rf_rank
-from ..utils.utils import hdf5_load, hdf5_save_from_obj
+from ..utils.io import hdf5_load
 
 
 class GaborFit(Analyzer):

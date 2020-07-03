@@ -3,7 +3,7 @@ import numpy as np
 from hypothesis import given
 from hypothesis.extra.numpy import arrays, floating_dtypes, array_shapes
 
-from src.utils.utils import *
+from src.utils.io import *
 
 
 # PyTables can't deal with NULL.

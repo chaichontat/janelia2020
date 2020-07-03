@@ -2,7 +2,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import List, Union
 
-from .utils.utils import hdf5_load, hdf5_save_from_obj
+from .utils.io import hdf5_load, hdf5_save_from_obj
 
 Path_s = Union[Path, str]
 

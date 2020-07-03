@@ -8,7 +8,7 @@ from hypothesis import settings
 
 from src.receptive_field.rf import ReceptiveField
 from src.spikeloader import SpikeLoader
-from src.utils.utils import hdf5_load
+from src.utils.io import hdf5_load
 
 settings.register_profile('default', max_examples=10, deadline=timedelta(milliseconds=20000))
 settings.load_profile('default')

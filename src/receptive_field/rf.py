@@ -12,11 +12,10 @@ from sklearn.linear_model import Ridge
 
 from ..analyzer import Analyzer
 from ..spikeloader import SpikeLoader
-from ..utils.utils import hdf5_save, hdf5_load
+from ..utils.io import hdf5_save
 
 
 class ReceptiveField(Analyzer):
-
     params = ['img_dim', 'lamda', 'smooth', 'seed', 'fit_type_']
     arrs = ['coef_', 'transformed']
     dfs = None
