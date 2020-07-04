@@ -1,3 +1,4 @@
+from jax import jit
 from jax import numpy as jnp
 
 
@@ -11,6 +12,7 @@ def mae(data, fitted):
     return jnp.mean(jnp.abs(x - y), axis=1)
 
 
+@jit
 def correlate(data, fitted):
     """ See Wikipedia. """
     x, y = check_data(data, fitted)
