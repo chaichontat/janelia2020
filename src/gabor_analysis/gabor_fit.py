@@ -18,10 +18,10 @@ from ..utils.io import hdf5_load
 
 
 class GaborFit(Analyzer):
-
     params = ['n_iter', 'n_pc', 'optimizer']
     arrs = ['rf_fit', 'params_fit', 'corr']
     dfs = None
+    KEY = {s: i for i, s in enumerate(['σ', 'θ', 'λ', 'γ', 'φ', 'pos_x', 'pos_y'])}
 
     def __init__(self, n_pc: int = 30, n_iter: int = 1500, optimizer: Dict[str, str] = None,
                  rf_fit=None, params_fit=None, corr=None):  # For reloading.
@@ -148,7 +148,7 @@ class GaborFit(Analyzer):
 
     def plot(self, seed: int = 40, save: str = None) -> None:
         rng = PRNGKey(seed)
-        idx = sorted(randint(rng, shape=(10,), minval=0, maxval=self.rf_fit.shape[0]))
+        idx = randint(rng, shape=(10,), minval=0, maxval=self.rf_fit.shape[0])
 
         fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_layout=True)
         axs = np.hstack([axs[0:2, :], axs[2:4, :]]).T
@@ -166,7 +166,7 @@ class GaborFit(Analyzer):
 
         fig.suptitle(
             f'Randomly selected 10 neurons from {self.rf_fit.shape[0]} neurons. '
-            f'\n Top {self.n_pc} PCs RF with corr coef')
+            f'\n Top {self.n_pc} PCs RF with corr coef. L: Generated, R: Raw.')
 
         if save:
             plt.savefig(save)
