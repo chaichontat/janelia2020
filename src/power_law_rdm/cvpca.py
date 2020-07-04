@@ -16,9 +16,9 @@ from .subtract_spont import SubtractSpontAnalyzer
 # %%
 class cvPCA(Analyzer):
 
-    params = ['n_pc', 'n_shuff', 'seed']
-    arrs = ['sums_of_squares']
-    dfs = None
+    HYPERPARAMS = ['n_pc', 'n_shuff', 'seed']
+    ARRAYS = ['sums_of_squares']
+    DATAFRAMES = None
 
     def __init__(self, n_pc: int = 1024, n_shuff: int = 5, seed: int = 124,
                  sums_of_squares: np.ndarray = None):

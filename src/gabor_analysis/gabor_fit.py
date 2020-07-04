@@ -18,9 +18,9 @@ from ..utils.io import hdf5_load
 
 
 class GaborFit(Analyzer):
-    params = ['n_iter', 'n_pc', 'optimizer']
-    arrs = ['rf_fit', 'params_fit', 'corr']
-    dfs = None
+    HYPERPARAMS = ['n_iter', 'n_pc', 'optimizer']
+    ARRAYS = ['rf_fit', 'params_fit', 'corr']
+    DATAFRAMES = None
     KEY = {s: i for i, s in enumerate(['σ', 'θ', 'λ', 'γ', 'φ', 'pos_x', 'pos_y'])}
 
     def __init__(self, n_pc: int = 30, n_iter: int = 1500, optimizer: Dict[str, str] = None,

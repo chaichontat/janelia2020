@@ -24,9 +24,9 @@ class CanonicalRidge(Analyzer):
 
     """
 
-    params = ['n', 'lambda_x', 'lambda_y', 'seed']
-    arrs = ['V', 'U', 'singular_values', 'coef', 'transformed_U', 'transformed_V']
-    dfs = None
+    HYPERPARAMS = ['n', 'lambda_x', 'lambda_y', 'seed']
+    ARRAYS = ['V', 'U', 'singular_values', 'coef', 'transformed_U', 'transformed_V']
+    DATAFRAMES = None
 
     def __init__(self, n: int = 25, lambda_x: float = 0.85, lambda_y: float = 0.85, seed: int = 87,
                  V=None, singular_values=None, U=None, coef=None, transformed_U=None, transformed_V=None):

@@ -15,9 +15,9 @@ from ..utils.io import hdf5_save
 
 
 class ReceptiveField(Analyzer):
-    params = ['img_dim', 'lamda', 'smooth', 'seed', 'fit_type_']
-    arrs = ['coef_', 'transformed']
-    dfs = None
+    HYPERPARAMS = ['img_dim', 'lamda', 'smooth', 'seed', 'fit_type_']
+    ARRAYS = ['coef_', 'transformed']
+    DATAFRAMES = None
 
     def __init__(self, img_dim, lamda: float = 1., smooth=0.5, seed=841,
                  fit_type_: str = None, coef_: np.ndarray = None, transformed=None):

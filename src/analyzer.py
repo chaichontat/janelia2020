@@ -8,9 +8,9 @@ Path_s = Union[Path, str]
 
 
 class Analyzer:
-    arrs: List[str]
-    dfs: List[str]
-    params: List[str]
+    ARRAYS: List[str]
+    DATAFRAMES: List[str]
+    HYPERPARAMS: List[str]
 
     """
     Abstract class for data analysis from raw spike data in the form of `SpikeLoader` instance.
@@ -31,19 +31,19 @@ class Analyzer:
         """ Fit `X` according to params. """
 
     def save(self, path: Path_s, save_transformed=True, **kwargs):
-        arrs = [arr for arr in self.arrs if 'transformed' not in arr] if not save_transformed else self.arrs
+        arrs = [arr for arr in self.ARRAYS if 'transformed' not in arr] if not save_transformed else self.ARRAYS
         return hdf5_save_from_obj(path, type(self).__name__, self,
-                                  arrs=arrs, dfs=self.dfs, params=self.params, **kwargs)
+                                  arrs=arrs, dfs=self.DATAFRAMES, params=self.HYPERPARAMS, **kwargs)
 
     def save_append(self, *args, **kwargs):
         return self.save(*args, append=True, **kwargs)
 
     @classmethod
     def from_hdf5(cls, path: Path_s, load_prev_run: bool = True, **kwargs):
-        arrs = cls.arrs if load_prev_run else None
-        dfs = cls.dfs if load_prev_run else None
+        arrs = cls.ARRAYS if load_prev_run else None
+        dfs = cls.DATAFRAMES if load_prev_run else None
         return cls(**hdf5_load(path, cls.__name__,
-                               arrs=arrs, dfs=dfs, params=cls.params, **kwargs))
+                               arrs=arrs, dfs=dfs, params=cls.HYPERPARAMS, **kwargs))
 
 # if __name__ == '__main__':
 #     test = SpikeLoader.from_hdf5('tests/data/raw.hdf5')

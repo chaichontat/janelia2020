@@ -23,7 +23,7 @@ def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict 
     else:
         mode = 'w'
         if not overwrite and Path(path).exists():
-            raise FileExistsError('File exists.')
+            raise FileExistsError('File exists. Consider setting `overwrite=True`')
 
     with tables.open_file(path, mode) as f:
         try:
