@@ -43,7 +43,7 @@ class GaborFit(Analyzer):
         assert rf.shape[1] % 2 == 0 and rf.shape[2] % 2 == 0
 
         init, update, get_params = self._get_optimizer(self.optimizer)
-        rf_dim = (rf.shape[2] // 2, rf.shape[1] // 2)
+        rf_dim = jnp.array((rf.shape[2] // 2, rf.shape[1] // 2))
 
         if self.n_pc == 0:
             print('No PCA.')
@@ -57,12 +57,12 @@ class GaborFit(Analyzer):
         t0 = time.time()
         for i in range(self.n_iter // 3):
             if i % 100 == 0:
-                loss, Δ = value_and_grad(GaborFit._loss_func)(get_params(params_jax), self.rf_pcaed)
+                loss, Δ = value_and_grad(GaborFit._loss_func)(get_params(params_jax), self.rf_pcaed, rf_dim)
                 corr = jnp.mean(correlate(self._make_gabor(rf_dim, get_params(params_jax)), self.rf_pcaed))
                 print(f'Step {3 * i: 5d} Corr: {corr: 0.4f} t: {time.time() - t0: 6.2f}s')
                 params_jax = update(i, Δ, params_jax)
             else:
-                params_jax = GaborFit._jax_fit(params_jax, self.rf_pcaed, get_params, update)
+                params_jax = GaborFit._jax_fit(params_jax, self.rf_pcaed, rf_dim, get_params, update)
 
         self.params_fit = get_params(params_jax)
         self.rf_fit = self._make_gabor(rf_dim, self.params_fit)
@@ -79,10 +79,10 @@ class GaborFit(Analyzer):
         return init, update, get_params
 
     @staticmethod
-    @partial(jit, static_argnums=(2, 3))
-    def _jax_fit(p, img, get_params, update):
+    @partial(jit, static_argnums=(2, 3, 4))
+    def _jax_fit(p, img, img_dim, get_params, update):
         for i in range(3):
-            Δ = grad(GaborFit._loss_func)(get_params(p), img)
+            Δ = grad(GaborFit._loss_func)(get_params(p), img, img_dim)
             p = update(i, Δ, p)
         return p
 
@@ -107,10 +107,9 @@ class GaborFit(Analyzer):
         return zscore_img(output.real)
 
     @staticmethod
-    @jit
-    def _loss_func(params, img):
-        size = (16, 9)
-        made = GaborFit._make_gabor(size, params)
+    @partial(jit, static_argnums=2)
+    def _loss_func(params, img, img_dim):
+        made = GaborFit._make_gabor(img_dim, params)
         metric = jnp.mean(-correlate(made, img))
 
         penalty_σ = 0.2 * jnp.mean(jnp.maximum(0, -params[:, 0] + 1))  # flipped ReLU from 1
