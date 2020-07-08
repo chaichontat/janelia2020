@@ -29,6 +29,7 @@ class ReceptiveField(Analyzer):
         self.coef_ = coef_
         self.fit_type_ = fit_type_
         self.transformed = transformed
+        self.pca_model = None
 
     def _rf_decorator(func):
         """
@@ -76,15 +77,15 @@ class ReceptiveField(Analyzer):
 
     @_rf_decorator
     def fit_pc(self, imgs, S, n_pc=30) -> ReceptiveField:
-        pca_model = PCA(n_components=n_pc, random_state=np.random.RandomState(self.seed)).fit(S.T)
+        self.pca_model = PCA(n_components=n_pc, random_state=np.random.RandomState(self.seed)).fit(S.T)
         self.fit_type_ = 'PC'
-        return pca_model.components_.T
+        return self.pca_model.components_.T
 
-    def transform(self, imgs=None):
+    def transform(self, imgs):
         self.transformed = imgs @ self.coef_.T
         return self.transformed
 
-    def fit_transform(self, imgs=None, S=None):
+    def fit_transform(self, imgs, S):
         self.fit_neuron(imgs, S)
         return self.transform(imgs)
 
@@ -127,7 +128,7 @@ class ReceptiveField(Analyzer):
             idx = np.arange(n_fig)
 
         for i in range(nrows * ncols):
-            rfmax = np.max(np.abs(B0[:nrows * ncols, :, :]))
+            rfmax = np.max(np.abs(B0[idx, :, :]))
             axs[i].imshow(B0[idx[i], :, :], cmap="twilight_shifted", vmin=-rfmax, vmax=rfmax)
             axs[i].axis('off')
             axs[i].set_title(f'{self.fit_type_} {idx[i]}')
