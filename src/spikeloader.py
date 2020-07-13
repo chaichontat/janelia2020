@@ -11,8 +11,6 @@ from sklearn.model_selection import train_test_split
 
 from .utils.io import hdf5_load, hdf5_save_from_obj
 
-
-os.environ['BLOSC_NTHREADS'] = '8'
 Path_str = Union[str, Path]
 
 

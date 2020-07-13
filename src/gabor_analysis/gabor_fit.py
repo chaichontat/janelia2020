@@ -19,24 +19,20 @@ from ..utils.io import hdf5_load
 
 class GaborFit(Analyzer):
     HYPERPARAMS = ['n_iter', 'n_pc', 'optimizer']
-    ARRAYS = ['rf_fit', 'params_fit', 'corr']
+    ARRAYS = ['params_fit', 'rf_pcaed', 'rf_fit', 'corr']
     DATAFRAMES = None
     KEY = {s: i for i, s in enumerate(['σ', 'θ', 'λ', 'γ', 'φ', 'pos_x', 'pos_y'])}
 
     def __init__(self, n_pc: int = 30, n_iter: int = 1500, optimizer: Dict[str, str] = None,
-                 rf_fit=None, params_fit=None, corr=None):  # For reloading.
+                 **kwargs):  # For reloading.
         # Optimizer. See https://jax.readthedocs.io/en/latest/jax.experimental.optimizers.html.
+        super().__init__(**kwargs)
         if optimizer is None:
             raise ValueError('Optimizer not named.')
         self.optimizer = optimizer
         self.n_iter = n_iter
         self.n_pc = n_pc
 
-        # Filled with self.pca and self.fit.
-        self.rf_pcaed = jnp.empty(0)
-
-        # Filled with self.fit.
-        self.rf_fit, self.params_fit, self.corr = rf_fit, params_fit, corr
 
     def fit(self, rf: np.ndarray):
         print('Fitting Gabor.')
@@ -145,9 +141,9 @@ class GaborFit(Analyzer):
 
         return params
 
-    def plot(self, seed: int = 40, save: str = None) -> None:
+    def plot(self, seed: int = 40, save: str = None, title=None) -> None:
         rng = PRNGKey(seed)
-        idx = randint(rng, shape=(10,), minval=0, maxval=self.rf_fit.shape[0])
+        idx = sorted(randint(rng, shape=(10,), minval=0, maxval=self.rf_fit.shape[0]))
 
         fig, axs = plt.subplots(nrows=4, ncols=5, figsize=(10, 6), dpi=300, constrained_layout=True)
         axs = np.hstack([axs[0:2, :], axs[2:4, :]]).T
@@ -163,9 +159,11 @@ class GaborFit(Analyzer):
             axs[i, 1].imshow(self.rf_pcaed[idx[i], ...], cmap='twilight_shifted', vmin=-scale, vmax=scale)
             axs[i, 1].axis('off')
 
-        fig.suptitle(
-            f'Randomly selected 10 neurons from {self.rf_fit.shape[0]} neurons. '
-            f'\n Top {self.n_pc} PCs RF with corr coef. L: Generated, R: Raw.')
+        if title is None:
+            title = f'Randomly selected 10 neurons from {self.rf_fit.shape[0]} neurons. '
+            f'\n Top {self.n_pc} PCs RF with corr coef.'
+
+        fig.suptitle(title)
 
         if save:
             plt.savefig(save)

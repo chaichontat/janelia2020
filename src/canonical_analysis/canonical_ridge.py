@@ -28,17 +28,12 @@ class CanonicalRidge(Analyzer):
     ARRAYS = ['V', 'U', 'singular_values', 'coef', 'transformed_U', 'transformed_V']
     DATAFRAMES = None
 
-    def __init__(self, n: int = 25, lambda_x: float = 0.85, lambda_y: float = 0.85, seed: int = 87,
-                 V=None, singular_values=None, U=None, coef=None, transformed_U=None, transformed_V=None):
+    def __init__(self, n: int = 25, lambda_x: float = 0.85, lambda_y: float = 0.85, seed: int = 87, **kwargs):
+        super().__init__(**kwargs)
         self.n = n
         self.lambda_x = lambda_x
         self.lambda_y = lambda_y
         self.seed = seed
-
-        self.V, self.singular_values, self.U = V, singular_values, U
-        self.Σ = self.singular_values
-        self.coef = coef
-        self.transformed_U, self.transformed_V = transformed_U, transformed_V
 
 
     def fit(self, X: Arrays, Y: Arrays):

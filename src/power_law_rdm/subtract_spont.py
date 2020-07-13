@@ -7,15 +7,13 @@ from src.analyzer import Analyzer
 
 class SubtractSpontAnalyzer(Analyzer):
 
-    params = ['n_pc', 'seed']
-    arrs = ['pcs']
-    dfs = None
+    HYPERPARAMS = ['n_pc', 'seed']
+    ARRAYS = ['pcs']
+    DATAFRAMES = None
 
-    def __init__(self, n_pc: int = 25, seed: int = 437,
-                 pcs: np.ndarray = None):
-        super().__init__()
+    def __init__(self, n_pc: int = 25, seed: int = 437, **kwargs):
+        super().__init__(**kwargs)
         self.n_pc = n_pc
-        self.pcs = pcs
         self.seed = seed
         assert self.n_pc > 0
 

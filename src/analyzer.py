@@ -22,9 +22,14 @@ class Analyzer:
     Any saved analysis should include proper context.
 
     """
-    @abstractmethod
-    def __init__(self, *args, **kwargs):
-        pass
+    def __init__(self, **kwargs):
+        if self.DATAFRAMES is not None:
+            for name in self.DATAFRAMES:
+                setattr(self, name, kwargs.get(name))
+
+        if self.ARRAYS is not None:
+            for name in self.ARRAYS:
+                setattr(self, name, kwargs.get(name))
 
     @abstractmethod
     def fit(self, *args, **kwargs):

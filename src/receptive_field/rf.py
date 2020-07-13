@@ -19,16 +19,13 @@ class ReceptiveField(Analyzer):
     ARRAYS = ['coef_', 'transformed']
     DATAFRAMES = None
 
-    def __init__(self, img_dim, lamda: float = 1., smooth=0.5, seed=841,
-                 fit_type_: str = None, coef_: np.ndarray = None, transformed=None):
+    def __init__(self, img_dim, lamda: float = 1., smooth=0.5, seed=841, **kwargs):
+        super().__init__(**kwargs)
         self.img_dim = img_dim
         self.lamda = lamda
         self.seed = seed
         self.smooth = smooth
 
-        self.coef_ = coef_
-        self.fit_type_ = fit_type_
-        self.transformed = transformed
         self.pca_model = None
 
     def _rf_decorator(func):
