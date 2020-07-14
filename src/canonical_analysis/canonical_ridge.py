@@ -35,10 +35,9 @@ class CanonicalRidge(Analyzer):
         self.lambda_y = lambda_y
         self.seed = seed
 
-
     def fit(self, X: Arrays, Y: Arrays):
         assert X.shape[0] == Y.shape[0]
-        K = self._calc_canon_mat(X, Y)
+        K = self._calc_canon_mat(X, Y, [self.lambda_x, self.lambda_y])
         model = PCA(self.n, random_state=onp.random.RandomState(self.seed)).fit(K)  # Randomized SVD.
 
         # Based on X = UΣV^T.
@@ -57,16 +56,23 @@ class CanonicalRidge(Analyzer):
         self.transformed_U, self.transformed_V = X @ self.U, Y @ self.V
         return self.transformed_U, self.transformed_V
 
-    def _calc_canon_mat(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
-        X, Y = np.asarray(X), np.asarray(Y)
-
+    @staticmethod
+    def _calc_canon_mat(X: Arrays, Y: Arrays, λs) -> np.DeviceArray:
         X -= np.mean(X, axis=0)
         Y -= np.mean(Y, axis=0)
-        K = inv(cholesky((1 - self.lambda_x) * np.cov(X, rowvar=False) + self.lambda_x * np.eye(X.shape[1]))) @ \
-            (X.T @ Y) / (X.T.shape[0] * Y.shape[1]) @ \
-            inv(cholesky((1 - self.lambda_y) * np.cov(Y, rowvar=False) + self.lambda_y * np.eye(Y.shape[1])))
+        X, Y = np.asarray(X), np.asarray(Y)
 
+        # https://stackoverflow.com/questions/15670094/speed-up-solving-a-triangular-linear-system-with-numpy
+        K = inv(cholesky(CanonicalRidge._ridge_cov(X, λs[0]))) @ \
+            (X.T @ Y) / (X.T.shape[0] * Y.shape[1]) @ \
+            inv(cholesky(CanonicalRidge._ridge_cov(Y, λs[1])))
         return K
+
+    @staticmethod
+    def _ridge_cov(X, λ):
+        cov = (1 - λ) * np.cov(X, rowvar=False)
+        cov = cov.at[np.diag_indices(cov.shape[0])].add(λ)
+        return cov
 
     def calc_canon_coef(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
         if self.transformed_U is None or self.transformed_V is None:
