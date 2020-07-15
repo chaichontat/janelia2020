@@ -37,7 +37,8 @@ def hdf5_save(path, group, *, arrs: dict = None, dfs: dict = None, params: dict 
 
         if arrs is not None:
             for k, v in arrs.items():
-                f.create_carray(f'/{group}', k, obj=np.asarray(v), filters=filters)
+                if v is not None:
+                    f.create_carray(f'/{group}', k, obj=np.asarray(v), filters=filters)
 
         if params is not None:
             for k, v in params.items():
