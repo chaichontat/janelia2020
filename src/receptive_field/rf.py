@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from scipy.ndimage import gaussian_filter
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.linear_model import Ridge
 
 from ..analyzer import Analyzer
@@ -102,6 +102,27 @@ class ReceptiveField(Analyzer):
         if save is not None:
             plt.savefig(save)
         plt.show()
+
+
+class ReducedRankReceptiveField(ReceptiveField):
+    HYPERPARAMS = ReceptiveField.HYPERPARAMS + ['rank']
+    ARRAYS = ReceptiveField.ARRAYS + ['coef_', 'coef_full_rank']
+
+    def __init__(self, *args, rank=10, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rank = rank
+
+    def _rf_routines(self, imgs: np.ndarray = None, S: np.ndarray = None, *args, **kwargs):
+        ridge = Ridge(alpha=self.lamda, random_state=np.random.RandomState(self.seed)).fit(imgs, S)
+        self.coef_full_rank = ridge.coef_
+        self.coef_ = self._reduce_rank(ridge.coef_)
+        return self
+
+    def _reduce_rank(self, coef):
+        mean = np.mean(coef, axis=0)
+        coef -= mean
+        svd: TruncatedSVD = TruncatedSVD(n_components=self.rank, random_state=self.seed).fit(coef)
+        return svd.inverse_transform(svd.transform(coef)) + mean
 
 
 def gen_rf_rank(rfs, n_pc, seed=455):
