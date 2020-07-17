@@ -28,55 +28,23 @@ class ReceptiveField(Analyzer):
 
         self.pca_model = None
 
-    def _rf_decorator(func):
-        """
-        Generate receptive fields (RFs) by multivariate linear regression between spikes and pixels.
-        Can generate RFs of each principal component (PC) OR each neuron.
-
-        Parameters
-        ----------
-        S: np.ndarray
-            Matrix of spikes for each stimulus (n_neu x n_stim).
-        img: np.ndarray
-            Matrix of stimulus images (y x x x n_stim)
-        λ: float
-            Coefficient for L2-regularization of the least-squares regression.
-        n_pcs: int
-            Number of PCs to generate RFs of. OR
-            0 -> generate RF of each neuron.
-
-        Returns
-        -------
-        B0: np.ndarray
-            RFs in (y x x x `pca`) OR (y x x x n_stim).
-
-        """
-
-        @wraps(func)
-        def rf_routines(self: ReceptiveField, imgs: np.ndarray = None, S: np.ndarray = None, *args, **kwargs):
-            Sp = func(self, imgs, S, *args, **kwargs)
-
-            # Linear regression
-            ridge = Ridge(alpha=self.lamda, random_state=np.random.RandomState(self.seed)).fit(imgs, Sp)
-            self.coef_ = ridge.coef_
-            return self
-
-        return rf_routines
+    def _rf_routines(self: ReceptiveField, imgs: np.ndarray = None, S: np.ndarray = None, *args, **kwargs):
+        ridge = Ridge(alpha=self.lamda, random_state=np.random.RandomState(self.seed)).fit(imgs, S)
+        self.coef_ = ridge.coef_
+        return self
 
     def fit(self, *args, **kwargs):
         print('Fitting neuron by default. To fit PC, run `fit_pc`.')
         return self.fit_neuron(*args, **kwargs)
 
-    @_rf_decorator
     def fit_neuron(self, imgs, S) -> ReceptiveField:
         self.fit_type_ = 'Neuron'
-        return S
+        return self._rf_routines(imgs, S)
 
-    @_rf_decorator
     def fit_pc(self, imgs, S, n_pc=30) -> ReceptiveField:
         self.pca_model = PCA(n_components=n_pc, random_state=np.random.RandomState(self.seed)).fit(S.T)
         self.fit_type_ = 'PC'
-        return self.pca_model.components_.T
+        return self._rf_routines(imgs, self.pca_model.components_.T)
 
     def transform(self, imgs):
         self.transformed = imgs @ self.coef_.T
