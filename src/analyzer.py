@@ -50,6 +50,10 @@ class Analyzer:
         return cls(**hdf5_load(path, cls.__name__,
                                arrs=arrs, dfs=dfs, params=cls.HYPERPARAMS, **kwargs))
 
+    def __repr__(self):
+        hyperparams = [f'\t{p} = {getattr(self, p)}\n' for p in self.HYPERPARAMS]
+        return f'{type(self).__name__}:\n' + ''.join(hyperparams)
+
 # if __name__ == '__main__':
 #     test = SpikeLoader.from_hdf5('tests/data/raw.hdf5')
 #     s = SubtractSpontAnalyzer()
