@@ -2,12 +2,15 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import List, Union
 
+import numpy as np
+import pandas as pd
 from .utils.io import hdf5_load, hdf5_save_from_obj
 
 Path_s = Union[Path, str]
 
 
 class Analyzer:
+
     ARRAYS: List[str]
     DATAFRAMES: List[str]
     HYPERPARAMS: List[str]
@@ -23,17 +26,22 @@ class Analyzer:
 
     """
     def __init__(self, **kwargs):
-        if self.DATAFRAMES is not None:
-            for name in self.DATAFRAMES:
-                setattr(self, name, kwargs.get(name))
-
-        if self.ARRAYS is not None:
-            for name in self.ARRAYS:
-                setattr(self, name, kwargs.get(name))
+        for name, type_ in {'ARRAYS': np.generic, 'DATAFRAMES': pd.DataFrame}.items():
+            if getattr(self, name) is not None:
+                for var in getattr(self, name):
+                    obj = kwargs.get(var)
+                    if not isinstance(obj, type_) and not None:
+                        setattr(self, var, obj)
+                    else:
+                        raise ValueError(f'{var} in {name} is not of type {type_.__name__} but {type(obj).__name__}.')
 
     @abstractmethod
     def fit(self, *args, **kwargs):
         """ Fit `X` according to params. """
+
+    @abstractmethod
+    def plot(self, *args, **kwargs):
+        raise NotImplementedError
 
     def save(self, path: Path_s, save_transformed=True, **kwargs):
         arrs = [arr for arr in self.ARRAYS if 'transformed' not in arr] if not save_transformed else self.ARRAYS
