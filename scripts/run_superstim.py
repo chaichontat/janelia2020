@@ -1,4 +1,5 @@
 # %%
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -75,27 +76,17 @@ def rotate_neuron_loc(loader, gabor):
 if __name__ == '__main__':
     loader = preprocess('data/superstim32.npz')
     rf = run_receptive_field(loader)
-    g = run_gabor(rf)
-    cca = run_canonical_ridge(loader)
+
+    gabor_path = 'data/gabor.hdf5'
+    g = GaborFit.from_hdf5(gabor_path) if Path(gabor_path).exists() else run_gabor(rf)
+
+    loader.pos = rotate_neuron_loc(loader, g)
+    loader.save_processed('data/processed.hdf5', overwrite=True)
+
+    # cca = run_canonical_ridge(loader)
 
     #
     # V1 = loader.pos['y'] > 200
     # V2 = loader.pos['y'] <= 200
     # V1c, V2c = cca.transform(loader.S[:, V1], loader.S[:, V2])
     # V1s, V2s = cca.subtract_canon_comp(loader.S[:, V1], loader.S[:, V2])
-
-    # import numpy as np
-    # cc_idx = np.argsort(-cca.coef)
-    # # rf = ReceptiveField(loader.img_dim)
-    # # rf.fit(loader.imgs_stim, V1c[:, cc_idx])
-    # # rf.fit_type_ = 'CC'
-    # # rf.plot(title='V1 CCs')
-    #
-    # import matplotlib.pyplot as plt
-    # import seaborn as sns
-    # sns.set()
-    # fig, ax = plt.subplots(dpi=300)
-    # ax.plot(cca.coef[cc_idx])
-    # ax.set_xlabel('CC')
-    # ax.set_ylabel('Pearson $r$')
-    # plt.show()
