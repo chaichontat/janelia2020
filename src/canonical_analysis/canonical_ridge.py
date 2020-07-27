@@ -76,15 +76,17 @@ class CanonicalRidge(Analyzer):
         return cov
 
     def calc_canon_coef(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
-        if self.transformed_U is None or self.transformed_V is None:
-            self.transform(X, Y)
-        X_p, Y_p = self.transformed_U, self.transformed_V
-        return np.array([onp.corrcoef(X_p[:, i], Y_p[:, i])[0, 1] for i in range(self.n)])
+        X_t, Y_t = self.transform(X, Y)
+        return np.array([onp.corrcoef(X_t[:, i], Y_t[:, i])[0, 1] for i in range(self.n)])
 
     def subtract_canon_comp(self, X: Arrays, Y: Arrays) -> Tuple[np.DeviceArray, np.DeviceArray]:
         if self.transformed_U is None or self.transformed_V is None:
             self.transform(X, Y)
         return X - (self.transformed_U @ self.U.T), Y - (self.transformed_V @ self.V.T)
+
+    def calc_canon_var(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
+        X_t, Y_t = self.transform(X, Y)
+        return np.sum(np.multiply(X_t, Y_t), axis=0)
 
 
 def make_regression_truth():
