@@ -49,7 +49,7 @@ def run_canonical_ridge(loader, out_file='data/cca.hdf5'):
     return cca
 
 
-def rotate_neuron_loc(loader, gabor):
+def rotate_neuron_loc(loader, gabor, return_θ=False):
     # Get data and center.
     pos = loader.pos[['x', 'y']].to_numpy().astype(np.float)
     pos -= np.mean(pos, axis=0)
@@ -70,7 +70,8 @@ def rotate_neuron_loc(loader, gabor):
     # Rotate data.
     pos = loader.pos[['x', 'y']].to_numpy().astype(np.float)
     pos = np.rint(pos @ R)
-    return pd.DataFrame(data=pos, columns=['x', 'y'])
+    df = pd.DataFrame(data=pos, columns=['x', 'y']).join(pos['z'])
+    return df, θ if return_θ else df
 
 
 if __name__ == '__main__':
