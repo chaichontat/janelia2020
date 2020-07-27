@@ -141,3 +141,5 @@ dmypy.json
 .idea/
 
 data/
+
+.vscode/
