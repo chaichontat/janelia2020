@@ -39,10 +39,6 @@ class Analyzer:
     def fit(self, *args, **kwargs):
         """ Fit `X` according to params. """
 
-    @abstractmethod
-    def plot(self, *args, **kwargs):
-        raise NotImplementedError
-
     def save(self, path: Path_s, save_transformed=True, **kwargs):
         arrs = [arr for arr in self.ARRAYS if 'transformed' not in arr] if not save_transformed else self.ARRAYS
         return hdf5_save_from_obj(path, type(self).__name__, self,
