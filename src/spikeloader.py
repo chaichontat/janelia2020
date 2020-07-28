@@ -14,6 +14,21 @@ from .utils.io import hdf5_load, hdf5_save_from_obj
 Path_str = Union[str, Path]
 
 
+class LazyProperty:
+    """ Lazy descriptor. Use as decorator to call func once on call and cache. """
+
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self
+        else:
+            value = self.func(instance)
+            setattr(instance, self.func.__name__, value)
+            return value
+
+
 @dataclass
 class SpikeLoader:
     path: Path_str
@@ -58,21 +73,25 @@ class SpikeLoader:
             self._imgs_stim = (zscore(X, axis=0) / np.sqrt(len(self.istim))).astype(np.float32)
         return self._imgs_stim  # (stim x pxs)
 
-    def get_idx_rep(self, return_onetimers=False) -> np.array:
+    def get_idx_rep(self, return_onetimers=False, stim_idx=True) -> Union[np.array, Tuple[np.ndarray, np.ndarray]]:
         istim: np.ndarray = self.istim.array.to_numpy()
-        unq, unq_cnt = np.unique(istim, return_counts=True)
-        idx_firstrep = unq[np.argwhere(unq_cnt > 1)]  # idx of repeating img
-        idx = -1 * np.ones([len(idx_firstrep), np.max(unq_cnt)], dtype=istim.dtype)
-        for i in range(len(idx_firstrep)):
-            curr = np.where(istim == idx_firstrep[i])[0]
+        idx_unq, unq_cnt = np.unique(istim, return_counts=True)
+        idx_repeating_img = idx_unq[np.argwhere(unq_cnt > 1)]
+        idx = -1 * np.ones([len(idx_repeating_img), np.max(unq_cnt)], dtype=istim.dtype)  # Generate array with (n_repeated_stim, max_repeats).
+        for i in range(len(idx_repeating_img)):
+            if stim_idx:
+                curr = np.where(istim == idx_repeating_img[i])[0]  # From integer index.
+            else:
+                curr = self.istim.where(istim == idx_repeating_img[i]).dropna().index  # From index.
             idx[i, : curr.size] = curr
-        if return_onetimers:
+        
+        if return_onetimers:  # TODO For stim_idx=True only.
             idx_one = np.where(
                 np.isin(np.arange(len(istim)), np.array(idx).flatten(), invert=True)
             )[0]
             return idx, idx_one
-        else:
-            return idx
+        
+        return idx
 
     @LazyProperty
     def idx_spont(self) -> np.ndarray:
@@ -129,21 +148,6 @@ class SpikeLoader:
         #     pos.create_dataset('y', data=np.array(self.pos['y']), chunks=False)
         #
         #     root.create_dataset('spks', data=self.spks, chunks=(None, 1000))
-
-
-class LazyProperty:
-    """ Lazy descriptor. Use as decorator to call func once on call and cache. """
-
-    def __init__(self, func):
-        self.func = func
-
-    def __get__(self, instance, cls):
-        if instance is None:
-            return self
-        else:
-            value = self.func(instance)
-            setattr(instance, self.func.__name__, value)
-            return value
 
 
 def convert_x(xpos, offset=5, width=473, gap=177):  # Total 650.
