@@ -33,15 +33,17 @@ class SpikeLoader:
     it is only there to save time. Not expected for a first run. """
 
     @classmethod
-    def from_npz(cls, path: Path_str = 'data/superstim32.npz', img_scale: float = 0.25):
-        with np.load(path, mmap_mode='r') as npz:
-            pos = pd.DataFrame({'x': npz['xpos'], 'y': npz['ypos']})
-            istim = pd.Series(npz['istim'], index=npz['frame_start'])
-            spks = npz['spks'].T
-            imgs = ndi.zoom(np.transpose(npz['img'], (2, 0, 1)), (1, img_scale, img_scale), order=1)
+    def from_npz(cls, path: Path_str = "data/superstim32.npz", img_scale: float = 0.25):
+        with np.load(path, mmap_mode="r") as npz:
+            pos = pd.DataFrame({"x": npz["xpos"], "y": npz["ypos"]})
+            istim = pd.Series(npz["istim"], index=npz["frame_start"])
+            spks = npz["spks"].T
+            imgs = ndi.zoom(
+                np.transpose(npz["img"], (2, 0, 1)), (1, img_scale, img_scale), order=1
+            )
             img_dim = imgs.shape[1:]
         del npz
-        return cls(**{k: v for k, v in locals().items() if k != 'cls'})
+        return cls(**{k: v for k, v in locals().items() if k != "cls"})
 
     @property
     def S(self):
@@ -63,46 +65,63 @@ class SpikeLoader:
         idx = -1 * np.ones([len(idx_firstrep), np.max(unq_cnt)], dtype=istim.dtype)
         for i in range(len(idx_firstrep)):
             curr = np.where(istim == idx_firstrep[i])[0]
-            idx[i, :curr.size] = curr
+            idx[i, : curr.size] = curr
         if return_onetimers:
-            idx_one = np.where(np.isin(np.arange(len(istim)), np.array(idx).flatten(), invert=True))[0]
+            idx_one = np.where(
+                np.isin(np.arange(len(istim)), np.array(idx).flatten(), invert=True)
+            )[0]
             return idx, idx_one
         else:
             return idx
 
-    @property
+    @LazyProperty
     def idx_spont(self) -> np.ndarray:
         if self.spks is None:
-            raise ValueError('Need to load full data for this')
-        idx_spont = \
-            np.where(np.isin(np.arange(np.max(self.istim.index) + 1), self.istim.index,
-                             assume_unique=True, invert=True))[0]  # Invert indices.
+            raise ValueError("Need to load full data for this")
+        idx_spont = np.where(
+            np.isin(
+                np.arange(np.max(self.istim.index) + 1),
+                self.istim.index,
+                assume_unique=True,
+                invert=True,
+            )
+        )[
+            0
+        ]  # Invert indices.
         assert idx_spont.size + self.istim.index.size == self.spks.shape[0]
         return idx_spont
 
     def train_test_split(self, test_size: float = 0.5, random_state: int = 1256) -> Tuple:
-        return train_test_split(self.imgs_stim, self.S, test_size=test_size, random_state=random_state)
+        return train_test_split(
+            self.imgs_stim, self.S, test_size=test_size, random_state=random_state
+        )
 
-    def save(self, path: Path_str = 'data/examples.hdf5', overwrite=False):
-        arrs = ['imgs', 'spks']
-        dfs = ['istim', 'pos']
-        params = ['img_scale', 'img_dim']
-        return hdf5_save_from_obj(path, 'SpikeLoader', self, arrs=arrs, dfs=dfs, params=params, overwrite=overwrite)
+    def save(self, path: Path_str = "data/examples.hdf5", overwrite=False):
+        arrs = ["imgs", "spks"]
+        dfs = ["istim", "pos"]
+        params = ["img_scale", "img_dim"]
+        return hdf5_save_from_obj(
+            path, "SpikeLoader", self, arrs=arrs, dfs=dfs, params=params, overwrite=overwrite
+        )
 
-    def save_processed(self, path: Path_str = 'data/processed.hdf5', overwrite=False):
+    def save_processed(self, path: Path_str = "data/processed.hdf5", overwrite=False):
         self.imgs_stim  # Process everything.
         self.S
-        arrs = ['_imgs_stim', '_S']
-        dfs = ['istim', 'pos']
-        params = ['img_scale', 'img_dim']
-        return hdf5_save_from_obj(path, 'SpikeLoader', self, arrs=arrs, dfs=dfs, params=params, overwrite=overwrite)
+        arrs = ["_imgs_stim", "_S"]
+        dfs = ["istim", "pos"]
+        params = ["img_scale", "img_dim"]
+        return hdf5_save_from_obj(
+            path, "SpikeLoader", self, arrs=arrs, dfs=dfs, params=params, overwrite=overwrite
+        )
 
     @classmethod
-    def from_hdf5(cls, path: Path_str = 'data/processed.hdf5'):
-        arrs = ['imgs', 'spks', '_imgs_stim', '_S']
-        dfs = ['istim', 'pos']
-        params = ['img_scale', 'img_dim']
-        return cls(path=path, **hdf5_load(path, 'SpikeLoader', arrs=arrs, dfs=dfs, params=params))
+    def from_hdf5(cls, path: Path_str = "data/processed.hdf5"):
+        arrs = ["imgs", "spks", "_imgs_stim", "_S"]
+        dfs = ["istim", "pos"]
+        params = ["img_scale", "img_dim"]
+        return cls(
+            path=path, **hdf5_load(path, "SpikeLoader", arrs=arrs, dfs=dfs, params=params)
+        )
 
         # with zarr.open(path, mode='w') as root:
         #     pos = root.create_group('pos')
@@ -110,6 +129,21 @@ class SpikeLoader:
         #     pos.create_dataset('y', data=np.array(self.pos['y']), chunks=False)
         #
         #     root.create_dataset('spks', data=self.spks, chunks=(None, 1000))
+
+
+class LazyProperty:
+    """ Lazy descriptor. Use as decorator to call func once on call and cache. """
+
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self
+        else:
+            value = self.func(instance)
+            setattr(instance, self.func.__name__, value)
+            return value
 
 
 def convert_x(xpos, offset=5, width=473, gap=177):  # Total 650.
@@ -120,6 +154,5 @@ def convert_x(xpos, offset=5, width=473, gap=177):  # Total 650.
     return x, z
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     test = SpikeLoader.from_npz()
