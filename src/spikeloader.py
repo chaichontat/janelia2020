@@ -56,7 +56,7 @@ class SpikeLoader:
             self._imgs_stim = (zscore(X, axis=0) / np.sqrt(len(self.istim))).astype(np.float32)
         return self._imgs_stim  # (stim x pxs)
 
-    def get_idx_rep(self, return_onetimers=False):
+    def get_idx_rep(self, return_onetimers=False) -> np.array:
         istim: np.ndarray = self.istim.array.to_numpy()
         unq, unq_cnt = np.unique(istim, return_counts=True)
         idx_firstrep = unq[np.argwhere(unq_cnt > 1)]  # idx of repeating img
@@ -70,7 +70,10 @@ class SpikeLoader:
         else:
             return idx
 
-    def get_idx_spont(self) -> np.ndarray:
+    @property
+    def idx_spont(self) -> np.ndarray:
+        if self.spks is None:
+            raise ValueError('Need to load full data for this')
         idx_spont = \
             np.where(np.isin(np.arange(np.max(self.istim.index) + 1), self.istim.index,
                              assume_unique=True, invert=True))[0]  # Invert indices.

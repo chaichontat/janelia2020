@@ -114,7 +114,7 @@ if __name__ == '__main__':
     sns.set()
 
     loader = SpikeLoader.from_hdf5('tests/data/raw.hdf5')
-    spont_model = SubtractSpontAnalyzer().fit(loader.spks, loader.get_idx_spont())
+    spont_model = SubtractSpontAnalyzer().fit(loader.spks, loader.idx_spont
     S_nospont = spont_model.transform(loader.S)
 
 
