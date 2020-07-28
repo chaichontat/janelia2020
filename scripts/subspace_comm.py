@@ -125,7 +125,7 @@ class CCARegions:
                 out.append(
                     pd.DataFrame(
                         cr.calc_canon_coef(region1[idx_test], region2[idx_test])
-                    ).assign(regions=name, split='test')
+                    ).assign(regions=name, split="test")
                 )
 
             if return_obj:
@@ -146,6 +146,54 @@ class CCARegions:
         region_pair = self.regions[regions]
         idxs_neu = self._gen_idxs_neuron(self.df, region_pair)
         return cr.transform(*[self.S[idx_test][:, i] for i in idxs_neu])
+
+    @staticmethod
+    def multiple_corrcoef(arr1: np.ndarray, arr2: np.ndarray) -> np.ndarray:
+        assert arr1.shape == arr2.shape
+        return np.array(
+            [np.corrcoef(arr1[:, i], arr2[:, i])[0, 1] for i in range(arr1.shape[1])]
+        )
+
+    def calc_corr_test(
+        self,
+        df_cr: pd.DataFrame,
+        idxs_test: Dict[str, np.ndarray],
+        pairs: List[Tuple[str, str]],
+    ) -> pd.DataFrame:
+        """Get df from run_cca and calc correlation between each pair of test indices.
+
+        Args:
+            df_cr (pd.DataFrame): df with **at least** cols {cr, regions}
+            idxs_test (Dict[str, np.ndarray]): Stim. {name of idx group: idx}
+            pairs (List[Tuple[str, str]]): List of comparisons, order-sensitive in each tuple.
+
+        Returns:
+            pd.DataFrame: df with all cols from `df_cr` except `cr` + {match, corr} in tidy format.
+        """
+        res = list()
+        for (x, y) in pairs:  # Check validity.
+            assert x in idxs_test
+            assert y in idxs_test
+
+        for row in df_cr.iloc:
+            # Compute variates
+            variates = {
+                name: self.run_cca_transform(row.cr, regions=row.regions, idx_test=idx)
+                for name, idx in idxs_test.items()
+            }
+            # Calculate corr.
+            corrs = {
+                f"{p1}_{p2}": self.multiple_corrcoef(variates[p1][0], variates[p2][1])
+                for (p1, p2) in pairs
+            }
+            res.append(
+                pd.DataFrame(corrs)
+                .reset_index()
+                .melt(id_vars="index", var_name="match", value_name="corr")
+                .assign(**dict(row))
+            )
+
+        return pd.concat(res).rename(columns={"index": "dimension"}).drop(columns=["cr"])
 
     def run_random_splits(self, n_train: List[int], test_size=0.2) -> pd.DataFrame:
         res = dict()
@@ -206,12 +254,16 @@ class CCARepeatedStim(CCARegions):
         return pd.concat(res)
 
     def run_unrepeated(self, n_train: List[int]) -> pd.DataFrame:
+        """Return DataFrame consisting of CanonicalRidge objects trained from unrepeated stimuli.
+
+        Args:
+            n_train (List[int]): Number of training
+
+        Returns:
+            pd.DataFrame: DF with columns {cr, regions, n}.
+        """
         rand = np.random.default_rng(self.seed)
         res = list()
-        idxs_repeated = {
-            f"rep{i}": x.squeeze()
-            for i, x in enumerate(np.split(self.loader.get_idx_rep(), 2, axis=1))
-        }
         for n in n_train:
             _, objs = self.run_cca(
                 idx_train=rand.choice(self.idx_unrepeated, size=n, replace=False),
@@ -219,22 +271,6 @@ class CCARepeatedStim(CCARegions):
             )
             res.append(objs.assign(n=n))
         return pd.concat(res)
-
-    def corr_between_test(self, df_cr: pd.DataFrame) -> pd.DataFrame:
-        res = list()
-        for row in df_cr.iloc:
-            ted = [
-                self.run_cca_transform(row.cr, regions=row.regions, idx_test=self.loader.get_idx_rep()[:, i])
-                for i in range(2)
-            ]
-            oneone = np.array([np.corrcoef(ted[0][0][:, i], ted[0][1][:, i])[0, 1] for i in range(ted[0][0].shape[1])])
-            onetwo = np.array([np.corrcoef(ted[0][0][:, i], ted[1][1][:, i])[0, 1] for i in range(ted[0][0].shape[1])])
-            twotwo = np.array([np.corrcoef(ted[1][0][:, i], ted[1][1][:, i])[0, 1] for i in range(ted[0][0].shape[1])])
-            res.append(pd.DataFrame(oneone, columns=['corr']).assign(match='rep1rep1', regions=row.regions, n=row.n))
-            res.append(pd.DataFrame(onetwo, columns=['corr']).assign(match='rep1rep2', regions=row.regions, n=row.n))
-            res.append(pd.DataFrame(twotwo, columns=['corr']).assign(match='rep2rep2', regions=row.regions, n=row.n))
-        return pd.concat(res).reset_index().rename(columns={'index': 'dimension'})
-            
 
     def calc_repeated_corr(self, n: int) -> pd.DataFrame:
         out = list()
@@ -264,7 +300,7 @@ if __name__ == "__main__":
     from src.spikeloader import SpikeLoader
 
     cr = CCARepeatedStim(
-    SpikeLoader.from_hdf5("data/processed.hdf5"), GaborFit.from_hdf5("data/gabor.hdf5")
+        SpikeLoader.from_hdf5("data/processed.hdf5"), GaborFit.from_hdf5("data/gabor.hdf5")
     )
     n_train = [500, 1000, 2000, 5000, 10000, 20000]
     df_un = cr.run_unrepeated(n_train=n_train[:3])
