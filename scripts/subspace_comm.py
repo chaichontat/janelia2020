@@ -1,4 +1,6 @@
+from contextlib import contextmanager
 from typing import Any, Dict, List, Tuple, Union, Optional, overload, Literal
+
 import logging
 
 import matplotlib.pyplot as plt
@@ -31,6 +33,7 @@ class CCARegions:
         self.n_cc = n_cc
 
         self.df = self.prepare_df()
+        self.spks_source = None
 
     @LazyProperty
     def spks(self) -> np.ndarray:
@@ -107,7 +110,7 @@ class CCARegions:
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         ...
 
-    def run_cca(self, idx_train, idx_test, return_obj=False):
+    def run_cca(self, idx_train, idx_test=None, return_obj=False):
         """
         Run CCA with regions as specified in `self.regions`.
         Canonical vectors are generated from `self.S[idx_stim_train]`.
@@ -123,11 +126,14 @@ class CCARegions:
 
         out: List[pd.DataFrame] = list()
         cr_obj: List[CanonicalRidge] = list()
+        spks_source = (
+            self.S if self.spks_source is None else self.spks_source
+        )  # For set_spks_source.
 
         for name, region_pair in self.regions.items():
             # Get neuron indices.
             idxs_neu = self._gen_idxs_neuron(self.df, region_pair)
-            region1, region2 = [self.S[:, idx] for idx in idxs_neu]
+            region1, region2 = [spks_source[:, idx] for idx in idxs_neu]
             cr = CanonicalRidge(self.n_cc, lambda_x=0.85, lambda_y=0.85).fit(
                 region1[idx_train], region2[idx_train]
             )
@@ -162,8 +168,11 @@ class CCARegions:
 
         region_pair = self.regions[regions]
         idxs_neu = self._gen_idxs_neuron(self.df, region_pair)
-        if spks_source is None:
+
+        if self.spks_source is None:  # For set_spks_source.
             spks_source = self.S if stim_idx else self.spks
+        else:
+            spks_source = self.spks_source
 
         return cr.transform(*[spks_source[idx_test][:, i] for i in idxs_neu])
 
@@ -227,6 +236,14 @@ class CCARegions:
             res[n] = self.run_cca(idx_train=idx_stim_tr, idx_test=idx_stim_te).assign(n=n)
 
         return pd.concat(res.values())
+
+    @contextmanager
+    def set_spks_source(self, spks_source: np.ndarray):
+        self.spks_source = spks_source
+        try:
+            yield
+        finally:
+            self.spks_source = None
 
 
 class CCARepeatedStim(CCARegions):
