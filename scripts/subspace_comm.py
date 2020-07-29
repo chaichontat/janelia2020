@@ -6,12 +6,12 @@ import numpy as np
 from numpy.core.records import ndarray
 import pandas as pd
 import seaborn as sns
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, zscore
 from sklearn.model_selection import train_test_split
 
 from src.canonical_analysis.canonical_ridge import CanonicalRidge
 from src.gabor_analysis.gabor_fit import GaborFit
-from src.spikeloader import SpikeLoader
+from src.spikeloader import SpikeLoader, LazyProperty
 
 
 class CCARegions:
@@ -31,6 +31,10 @@ class CCARegions:
         self.n_cc = n_cc
 
         self.df = self.prepare_df()
+
+    @LazyProperty
+    def spks(self) -> np.ndarray:
+        return zscore(self.loader.spks, axis=0)
 
     @property
     def df_all(self) -> pd.DataFrame:
@@ -141,11 +145,20 @@ class CCARegions:
             return pd.concat(out)
 
     def run_cca_transform(
-        self, cr: CanonicalRidge, regions: str, idx_test: np.ndarray, split: str = "test"
+        self,
+        cr: CanonicalRidge,
+        regions: str,
+        idx_test: np.ndarray,
+        stim_idx: bool = True,
+        spks_source: Optional[np.ndarray] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
+
         region_pair = self.regions[regions]
         idxs_neu = self._gen_idxs_neuron(self.df, region_pair)
-        return cr.transform(*[self.S[idx_test][:, i] for i in idxs_neu])
+        if spks_source is None:
+            spks_source = self.S if stim_idx else self.spks
+
+        return cr.transform(*[spks_source[idx_test][:, i] for i in idxs_neu])
 
     @staticmethod
     def multiple_corrcoef(arr1: np.ndarray, arr2: np.ndarray) -> np.ndarray:
@@ -159,6 +172,7 @@ class CCARegions:
         df_cr: pd.DataFrame,
         idxs_test: Dict[str, np.ndarray],
         pairs: List[Tuple[str, str]],
+        **run_cca_transform_kwargs,
     ) -> pd.DataFrame:
         """Get df from run_cca and calc correlation between each pair of test indices.
 
@@ -178,7 +192,9 @@ class CCARegions:
         for row in df_cr.iloc:
             # Compute variates
             variates = {
-                name: self.run_cca_transform(row.cr, regions=row.regions, idx_test=idx)
+                name: self.run_cca_transform(
+                    row.cr, regions=row.regions, idx_test=idx, **run_cca_transform_kwargs
+                )
                 for name, idx in idxs_test.items()
             }
             # Calculate corr.
