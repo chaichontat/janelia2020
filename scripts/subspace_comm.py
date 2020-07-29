@@ -19,6 +19,8 @@ from src.spikeloader import SpikeLoader, LazyProperty
 class CCARegions:
     """Class to perform CCA between brain regions (V1 and V2).
     Primarily to split neurons into regions and groups.
+    
+    See `subspace_nb.ipynb` for examples.
     """
 
     regions = {
