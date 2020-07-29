@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any, Dict, List, Tuple, Union, Optional, overload, Literal
 import logging
 
 import matplotlib.pyplot as plt
@@ -95,12 +95,19 @@ class CCARegions:
         """
         return [df.loc[df[p.keys()].isin(p.values()).all(axis=1), :].index for p in region_pair]
 
+    @overload
     def run_cca(
-        self,
-        idx_train: np.ndarray,
-        idx_test: Optional[np.ndarray] = None,
-        return_obj: bool = False,
-    ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame]]:
+        self, idx_train: np.ndarray, idx_test: Optional[np.ndarray], return_obj: Literal[False]
+    ) -> pd.DataFrame:
+        ...
+
+    @overload
+    def run_cca(
+        self, idx_train: np.ndarray, idx_test: Optional[np.ndarray], return_obj: Literal[True]
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        ...
+
+    def run_cca(self, idx_train, idx_test, return_obj=False):
         """
         Run CCA with regions as specified in `self.regions`.
         Canonical vectors are generated from `self.S[idx_stim_train]`.
