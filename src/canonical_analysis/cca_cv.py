@@ -25,10 +25,10 @@ def prepare_train_test(loader: SpikeLoader):
 def objective(train, test, *λ):
     print(f'{λ=}')
     λ = λ[0]
-    model = CanonicalRidge(lx=λ[0], ly=λ[1]).fit(*train)
+    model = CanonicalRidge(lambda_x=λ[0], lambda_y=λ[1]).fit(*train)
     tr = -np.mean(model.calc_canon_coef(*test))
 
-    model = CanonicalRidge(lx=λ[0], ly=λ[1]).fit(*test)
+    model = CanonicalRidge(lambda_x=λ[0], lambda_y=λ[1]).fit(*test)
     tr += -np.mean(model.calc_canon_coef(*train))
     return float(tr)
 
@@ -68,8 +68,8 @@ if __name__ == '__main__':
 # axs = np.hstack([axs[0:2, :], axs[2:4, :]]).T
 # for i in range(10):
 #     scale = np.max(np.abs([B[idx[i], :, :], B_reduced[idx[i], :, :]]))
-#     axs[i, 0].imshow(B[idx[i], :, :], cmap='bwr', vmin=-scale, vmax=scale)
-#     axs[i, 1].imshow(B_reduced[idx[i], :, :], cmap='bwr', vmin=-scale, vmax=scale)
+#     axs[i, 0].imshow(B[idx[i], :, :], cmap='twilight_shifted', vmin=-scale, vmax=scale)
+#     axs[i, 1].imshow(B_reduced[idx[i], :, :], cmap='twilight_shifted', vmin=-scale, vmax=scale)
 #     axs[i, 0].axis('off')
 #     axs[i, 1].axis('off')
 #
