@@ -17,6 +17,10 @@ from src.spikeloader import SpikeLoader, LazyProperty
 
 
 class CCARegions:
+    """Class to perform CCA between brain regions (V1 and V2).
+    Primarily to split neurons into regions and groups.
+    """
+
     regions = {
         "V1V1": (dict(group=0, region="V1"), dict(group=1, region="V1")),
         "V1V2": (dict(group=0, region="V1"), dict(group=0, region="V2")),
@@ -39,20 +43,41 @@ class CCARegions:
     def spks(self) -> np.ndarray:
         return zscore(self.loader.spks, axis=0)
 
-    @property
+    @LazyProperty
     def df_all(self) -> pd.DataFrame:
+        """Convert params_fit to proper DF with columns. Add physical x, y pos.
+
+        Returns:
+            pd.DataFrame: [description]
+        """
         d = pd.DataFrame(data=self.gabor.params_fit, columns=GaborFit.KEY.keys())
         d.rename(columns=dict(pos_x="azimuth", pos_y="altitude"), inplace=True)
         return d.join(self.loader.pos)
 
     def prepare_df(self, V2_size: float = 0.4, V2_cutoff: int = 180) -> pd.DataFrame:
+        """Add analysis-specific details to df_all. Here, we
+            (1) We split V1 and V2 neurons using a straight line in the y-axis. Col: region
+            (2) Sample V1 and V2 neurons such that the Gabor x (proxy for overall similarity) matches that of V1s.
+            (3) Randomly split V1 and V2 each into 2 groups. For inter and intra-region CCA.
+
+        Args:
+            V2_size (float, optional): The number of sampled V2 neurons. Defaults to 0.4.
+            V2_cutoff (int, optional): The y-cutoff value for V2. Defaults to 180.
+
+        Returns:
+            pd.DataFrame: DF with additional columns {sampled, region, group}
+        """
         df_all = self.df_all.copy()
+
         # Line separating V1 and V2.
         df_all["region"] = pd.Categorical(np.where(df_all.y > V2_cutoff, "V1", "V2"))
         n_V2 = int(V2_size * df_all.groupby("region").size()["V2"])
 
+        # Sample
         df_all["sampled"] = False
-        df_all.loc[self._match_dist(df_all, "V1", "V2", size=n_V2), "sampled"] = True  # V2
+        df_all.loc[
+            self._match_dist_region(df_all, "azimuth", "V1", "V2", size=n_V2), "sampled"
+        ] = True  # V2
         df_all.loc[df_all[df_all.region == "V1"].sample(n_V2).index, "sampled"] = True  # V1
         df_sampled = df_all[df_all.sampled]
 
@@ -67,15 +92,29 @@ class CCARegions:
         df_sampled["group"] = df_sampled["group"].astype("category")
         return df_sampled
 
-    def _match_dist(self, df, source, target, size):
-        # Sample each region with matching distribution.
+    def _match_dist_region(
+        self, df: pd.DataFrame, param: str, source: str, target: str, size: int
+    ) -> np.ndarray:
+        """Sample neurons from region `target` such that the distribution of `param` matches that of `source`.
+
+        Args:
+            df (pd.DataFrame): DF if Gabor params with region info.
+            param (str): Name of Gabor param to use.
+            source (str): Source region.
+            target (str): Target region.
+            size (int): Number of neurons to sample from target.
+                        Trade-off between number of neurons and KL divergence.
+
+        Returns:
+            np.ndarray: Indices of sampled target neurons.
+        """
         assert source in df.region.cat.categories
         assert target in df.region.cat.categories
 
-        azi = {reg: df[df.region == reg]["azimuth"] for reg in [source, target]}
-        kde = {reg: gaussian_kde(z) for reg, z in azi.items()}
+        val = {reg: df[df.region == reg][param] for reg in [source, target]}
+        kde = {reg: gaussian_kde(z) for reg, z in val.items()}
         p = (
-            p_unnorm := kde[source].evaluate(azi[target]) / kde[target].evaluate(azi[target])
+            p_unnorm := kde[source].evaluate(val[target]) / kde[target].evaluate(val[target])
         ) / np.sum(p_unnorm)
 
         rand = np.random.default_rng(self.seed)
@@ -86,12 +125,12 @@ class CCARegions:
         df: pd.DataFrame, region_pair: Tuple[Dict[str, Any], ...]
     ) -> List[pd.Index]:
         """
-        Return the indices of neurons as filtered by the `pair` arg.
+        Return the indices of neurons as filtered by the the dicts in `region_pair`.
 
         Args:
-            df (pd.DataFrame): [description]
+            df (pd.DataFrame)
             pair (Tuple[Dict[str, Any], ...]): A tuple of dicts that specifies filters {column: value}.
-                Multiple filters are treated as intersections (AND).
+                Multiple filters are treated as intersections (AND). See `self.regions` for example.
 
         Returns:
             List[pd.Index]: List of neuron indices.
@@ -117,11 +156,14 @@ class CCARegions:
         Canonical coefs are from both `self.S[idx_stim_train]` and `self.S[idx_stim_test]`.
 
         Args:
-            idx_stim_train (np.ndarray): [description]
-            idx_stim_test (np.ndarray): [description]
+            idx_train (ndarray): Train indices.
+            idx_test (Optional[np.ndarray]): Test indices.
 
         Returns:
-            pd.DataFrame: canonical coefs in a tidy df. Columns are [coefs, regions, split].
+            if not return_obj:
+                pd.DataFrame: canonical coefs in a tidy df. Columns are [dimension, coefs, regions, split].
+            else:
+                Above and pd.DataFrame of CanonicalRidge objects with cols [cr, regions].
         """
 
         out: List[pd.DataFrame] = list()
@@ -158,13 +200,20 @@ class CCARegions:
             return pd.concat(out)
 
     def run_cca_transform(
-        self,
-        cr: CanonicalRidge,
-        regions: str,
-        idx_test: np.ndarray,
-        stim_idx: bool = True,
-        spks_source: Optional[np.ndarray] = None,
+        self, cr: CanonicalRidge, regions: str, idx_test: np.ndarray, stim_idx: bool = True,
     ) -> Tuple[np.ndarray, np.ndarray]:
+        """Calculate the canonical variates of given `idx_test` between `regions` pair.
+
+        Args:
+            cr (CanonicalRidge)
+            regions (str): Name of region pairs from `self.regions`.
+            idx_test (np.ndarray): Stim indices to calculate.
+            stim_idx (bool, optional): Use filtered stim (S) index.
+                Otherwise use index that includes spont timepoints. Defaults to True.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: Pair of canonical variates.
+        """
 
         region_pair = self.regions[regions]
         idxs_neu = self._gen_idxs_neuron(self.df, region_pair)
@@ -178,10 +227,142 @@ class CCARegions:
 
     @staticmethod
     def multiple_corrcoef(arr1: np.ndarray, arr2: np.ndarray) -> np.ndarray:
+        """Pearson's correlation coefficient for each column of a matrix.
+
+        Args:
+            arr1 (np.ndarray)
+            arr2 (np.ndarray)
+
+        Returns:
+            np.ndarray: Vector containing correlation coefficient.
+        """
         assert arr1.shape == arr2.shape
         return np.array(
             [np.corrcoef(arr1[:, i], arr2[:, i])[0, 1] for i in range(arr1.shape[1])]
         )
+
+    def run_random_splits(self, ns: List[int], test_size=0.2) -> pd.DataFrame:
+        """Run CCA using `ns` stim points. Test from `train_test_split`.
+
+        Args:
+            n_train (List[int])
+            test_size (float, optional): Defaults to 0.2.
+
+        Returns:
+            pd.DataFrame: DF with col [dimension, coefs, regions, split, n] (from self.run_cca.)
+        """
+        res = dict()
+        for n in ns:
+            idx_stim_tr, idx_stim_te = train_test_split(
+                np.arange(0, int(n)), test_size=test_size, random_state=self.seed
+            )
+            res[n] = self.run_cca(idx_train=idx_stim_tr, idx_test=idx_stim_te).assign(n=n)
+
+        return pd.concat(res.values())
+
+    @contextmanager
+    def set_spks_source(self, spks_source: np.ndarray) -> None:
+        """Override `self.S` as the data matrix.
+
+        Args:
+            spks_source (np.ndarray): Data matrix of (n_stim, n_neu).
+        """
+        self.spks_source = spks_source
+        try:
+            yield
+        finally:
+            self.spks_source = None
+
+
+class CCARepeatedStim(CCARegions):
+    """ Class to focus more on the impacts of different stimuli.
+    All indices mentioned here are stim indices.
+    All neuron indices should be dealt with in `CCARegions`.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Generate `idx_test` and `idx_unrepeated`.
+        `idx_test` is the time when the second repeat of the repeated stimuli is shown.
+        `idx_unrepeated` is the time when stimuli that are shown once is shown.
+        """
+        super().__init__(*args, **kwargs)
+        self.idx_test = self.loader.get_idx_rep()[:, 1]
+        self.idx_unrepeated = np.where(
+            np.isin(range(self.S.shape[0]), self.loader.get_idx_rep().flatten(), invert=True)
+        )[0]
+
+    def _get_idx_train_repeated(self, n: int) -> pd.DataFrame:
+        """Generate indices of training data that include and does not include test stimuli.
+        
+        if test_stim_in_train:
+            Get the first repeat until n>entire repeat set. Then concat some random unrepeated idx.
+        else:
+            Get random unrepeated idx.
+        
+        Args:
+            n (int): Size of training data.
+        Returns:
+            pd.DataFrame: DF of indices with cols [stim, test_stim_in_train].
+        """
+        rand = np.random.default_rng(self.seed)
+        idx_train_norep = pd.DataFrame(
+            rand.choice(self.idx_unrepeated, size=n, replace=False)
+        ).assign(test_stim_in_train=False)
+
+        if n > len(self.idx_test):
+            idx_train_rep = np.concatenate(
+                (
+                    self.loader.get_idx_rep()[:, 0],
+                    rand.choice(
+                        self.idx_unrepeated, size=n - len(self.idx_test), replace=False
+                    ),
+                )
+            )
+        else:
+            idx_train_rep: np.ndarray = self.loader.get_idx_rep()[:n, 0]
+        idx_train_rep = pd.DataFrame(idx_train_rep).assign(test_stim_in_train=True)
+
+        return pd.concat([idx_train_norep, idx_train_rep]).rename(columns={0: "stim"})
+
+    def run_repeated_splits(self, ns_train: List[int]) -> pd.DataFrame:
+        """Run CCA to compare the effects of the presence of test stimuli in the training data.
+
+        Args:
+            n_train (List[int]): List of number of training samples to run.
+
+        Returns:
+            pd.DataFrame: Canonical coefs with col [dimension, coefs, regions, split, n] (from self.run_cca).
+        """
+        res = list()
+        for n in ns_train:
+            idx = self._get_idx_train_repeated(n)
+            for case in [True, False]:
+                coefs = self.run_cca(
+                    idx_train=idx[idx.test_stim_in_train.eq(case)]["stim"],
+                    idx_test=self.idx_test,
+                ).assign(test_stim_in_train=case, n=n)
+                res.append(coefs)
+
+        return pd.concat(res)
+
+    def get_cr_unrepeated(self, ns_train: List[int]) -> pd.DataFrame:
+        """Return DataFrame consisting of CanonicalRidge objects trained from unrepeated stimuli.
+
+        Args:
+            n_train (List[int]): List of number of training samples to run.
+
+        Returns:
+            pd.DataFrame: DF with columns [cr, regions, n].
+        """
+        rand = np.random.default_rng(self.seed)
+        res = list()
+        for n in ns_train:
+            _, objs = self.run_cca(
+                idx_train=rand.choice(self.idx_unrepeated, size=n, replace=False),
+                return_obj=True,
+            )
+            res.append(objs.assign(n=n))
+        return pd.concat(res)
 
     def calc_corr_test(
         self,
@@ -227,92 +408,16 @@ class CCARegions:
 
         return pd.concat(res).rename(columns={"index": "dimension"}).drop(columns=["cr"])
 
-    def run_random_splits(self, n_train: List[int], test_size=0.2) -> pd.DataFrame:
-        res = dict()
-        for n in n_train:
-            idx_stim_tr, idx_stim_te = train_test_split(
-                np.arange(0, int(n)), test_size=test_size, random_state=self.seed
-            )
-            res[n] = self.run_cca(idx_train=idx_stim_tr, idx_test=idx_stim_te).assign(n=n)
-
-        return pd.concat(res.values())
-
-    @contextmanager
-    def set_spks_source(self, spks_source: np.ndarray):
-        self.spks_source = spks_source
-        try:
-            yield
-        finally:
-            self.spks_source = None
-
-
-class CCARepeatedStim(CCARegions):
-    """
-    All indices defined in this class are for `stim`.
-    All neuron indices are already dealt with in `CCARegions`.
-    """
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.idx_test = self.loader.get_idx_rep()[:, 1]
-        self.idx_unrepeated = np.where(
-            np.isin(range(self.S.shape[0]), self.loader.get_idx_rep().flatten(), invert=True)
-        )[0]
-
-    def _get_idx_train_repeated(self, n: int) -> pd.DataFrame:
-        rand = np.random.default_rng(self.seed)
-        idx_train_norep = pd.DataFrame(
-            rand.choice(self.idx_unrepeated, size=n, replace=False)
-        ).assign(test_stim_in_train=False)
-
-        if n > len(self.idx_test):
-            idx_train_rep = np.concatenate(
-                (
-                    self.loader.get_idx_rep()[:, 0],
-                    rand.choice(
-                        self.idx_unrepeated, size=n - len(self.idx_test), replace=False
-                    ),
-                )
-            )
-        else:
-            idx_train_rep: np.ndarray = self.loader.get_idx_rep()[:n, 0]
-        idx_train_rep = pd.DataFrame(idx_train_rep).assign(test_stim_in_train=True)
-
-        return pd.concat([idx_train_norep, idx_train_rep]).rename(columns={0: "stim"})
-
-    def run_repeated_splits(self, n_train: List[int]) -> pd.DataFrame:
-        res = list()
-        for n in n_train:
-            idx = self._get_idx_train_repeated(n)
-            for case in [True, False]:
-                coefs = self.run_cca(
-                    idx_train=idx[idx.test_stim_in_train.eq(case)]["stim"],
-                    idx_test=self.idx_test,
-                ).assign(test_stim_in_train=case, n=n)
-                res.append(coefs)
-
-        return pd.concat(res)
-
-    def run_unrepeated(self, n_train: List[int]) -> pd.DataFrame:
-        """Return DataFrame consisting of CanonicalRidge objects trained from unrepeated stimuli.
+    def calc_repeated_corr(self, n: int) -> pd.DataFrame:
+        """Calculate the correlation between the first and second repeats of the repeated stimuli.
+        For testing.
 
         Args:
-            n_train (List[int]): Number of training
+            n (int): number of samples to get from `self._get_idx_train_repeated`.
 
         Returns:
-            pd.DataFrame: DF with columns {cr, regions, n}.
+            pd.DataFrame: DF from process_df with col [regions, group, test_stim_in_train, n]
         """
-        rand = np.random.default_rng(self.seed)
-        res = list()
-        for n in n_train:
-            _, objs = self.run_cca(
-                idx_train=rand.choice(self.idx_unrepeated, size=n, replace=False),
-                return_obj=True,
-            )
-            res.append(objs.assign(n=n))
-        return pd.concat(res)
-
-    def calc_repeated_corr(self, n: int) -> pd.DataFrame:
         out = list()
         for name, pair in self.regions.items():  # Each region (V1V1, V1V2, ...).
             # Get neuron indices.
@@ -343,7 +448,7 @@ if __name__ == "__main__":
         SpikeLoader.from_hdf5("data/processed.hdf5"), GaborFit.from_hdf5("data/gabor.hdf5")
     )
     n_train = [500, 1000, 2000, 5000, 10000, 20000]
-    df_un = cr.run_unrepeated(n_train=n_train[:3])
+    df_un = cr.get_cr_unrepeated(ns_train=n_train[:3])
     test = cr.corr_between_test(df_un)
     # %% [markdown]
     # V1 and V2 are separated by a line where the azimuth preference reverses with increased receptive field size (σ).
