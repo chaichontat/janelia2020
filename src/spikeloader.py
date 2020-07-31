@@ -1,10 +1,12 @@
-import os
+import logging
 from dataclasses import dataclass
-from typing import Tuple, Union
+from functools import cached_property
+from typing import Literal, Tuple, Union, overload, Optional, Any
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from numpy.core.records import ndarray
 from scipy import ndimage as ndi
 from scipy.stats import zscore
 from sklearn.model_selection import train_test_split
@@ -12,21 +14,6 @@ from sklearn.model_selection import train_test_split
 from .utils.io import hdf5_load, hdf5_save_from_obj
 
 Path_str = Union[str, Path]
-
-
-class LazyProperty:
-    """ Lazy descriptor. Use as decorator to call func once on call and cache. """
-
-    def __init__(self, func):
-        self.func = func
-
-    def __get__(self, instance, cls):
-        if instance is None:
-            return self
-        else:
-            value = self.func(instance)
-            setattr(instance, self.func.__name__, value)
-            return value
 
 
 @dataclass
@@ -37,12 +24,12 @@ class SpikeLoader:
     istim: pd.Series  # (n_stim). Index is (t).
     img_scale: float
 
-    spks: np.ndarray = np.empty(0)  # (t ✕ n_neu)
-    imgs: np.ndarray = np.empty(0)  # (n_img ✕ y ✕ x)
+    spks: ndarray = np.empty(0)  # (t ✕ n_neu)
+    imgs: ndarray = np.empty(0)  # (n_img ✕ y ✕ x)
 
-    _S: np.ndarray = np.empty(0)  # (n_stim ✕ n_neu)
-    _imgs_stim: np.ndarray = np.empty(0)  # (n_stim ✕ n_px)
-    img_dim: np.ndarray = np.empty(0)  # (y, x)
+    _S: ndarray = np.empty(0)  # (n_stim ✕ n_neu)
+    _imgs_stim: ndarray = np.empty(0)  # (n_stim ✕ n_px)
+    img_dim: ndarray = np.empty(0)  # (y, x)
 
     """ Anything with an `_` prefix means that it's a product of this class and 
     it is only there to save time. Not expected for a first run. """
@@ -73,28 +60,44 @@ class SpikeLoader:
             self._imgs_stim = (zscore(X, axis=0) / np.sqrt(len(self.istim))).astype(np.float32)
         return self._imgs_stim  # (stim x pxs)
 
-    def get_idx_rep(self, return_onetimers=False, stim_idx=True) -> Union[np.array, Tuple[np.ndarray, np.ndarray]]:
-        istim: np.ndarray = self.istim.array.to_numpy()
+    @overload
+    def get_idx_rep(
+        self, return_onetimers: Literal[True], stim_idx: bool
+    ) -> Any:  # Tuple[ndarray, ndarray]:
+        ...
+
+    @overload
+    def get_idx_rep(
+        self, return_onetimers: Literal[False], stim_idx: bool
+    ) -> Any: # ndarray:
+        ...
+
+    def get_idx_rep(self, return_onetimers: bool = False, stim_idx: bool = True):
+        istim: ndarray = self.istim.array.to_numpy()
         idx_unq, unq_cnt = np.unique(istim, return_counts=True)
         idx_repeating_img = idx_unq[np.argwhere(unq_cnt > 1)]
-        idx = -1 * np.ones([len(idx_repeating_img), np.max(unq_cnt)], dtype=istim.dtype)  # Generate array with (n_repeated_stim, max_repeats).
+        idx = -1 * np.ones(
+            [len(idx_repeating_img), np.max(unq_cnt)], dtype=istim.dtype
+        )  # Generate array with (n_repeated_stim, max_repeats).
         for i in range(len(idx_repeating_img)):
             if stim_idx:
                 curr = np.where(istim == idx_repeating_img[i])[0]  # From integer index.
             else:
-                curr = self.istim.where(istim == idx_repeating_img[i]).dropna().index  # From index.
+                curr = (
+                    self.istim.where(istim == idx_repeating_img[i]).dropna().index
+                )  # From index.
             idx[i, : curr.size] = curr
-        
+
         if return_onetimers:  # TODO For stim_idx=True only.
             idx_one = np.where(
                 np.isin(np.arange(len(istim)), np.array(idx).flatten(), invert=True)
             )[0]
             return idx, idx_one
-        
+
         return idx
 
-    @LazyProperty
-    def idx_spont(self) -> np.ndarray:
+    @cached_property
+    def idx_spont(self) -> Any:
         if self.spks is None:
             raise ValueError("Need to load full data for this")
         idx_spont = np.where(
@@ -135,6 +138,9 @@ class SpikeLoader:
 
     @classmethod
     def from_hdf5(cls, path: Path_str = "data/processed.hdf5"):
+        if Path(path).suffix != ".hdf5":
+            logging.warning('Calling from_hdf5 but file does not have extension .hdf5.')
+            
         arrs = ["imgs", "spks", "_imgs_stim", "_S"]
         dfs = ["istim", "pos"]
         params = ["img_scale", "img_dim"]

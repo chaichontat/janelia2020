@@ -1,3 +1,5 @@
+import logging
+
 from abc import abstractmethod
 from pathlib import Path
 from typing import List, Union
@@ -49,6 +51,9 @@ class Analyzer:
 
     @classmethod
     def from_hdf5(cls, path: Path_s, load_prev_run: bool = True, **kwargs):
+        if Path(path).suffix != ".hdf5":
+            logging.warning('Calling from_hdf5 but file does not have extension .hdf5.')
+    
         arrs = cls.ARRAYS if load_prev_run else None
         dfs = cls.DATAFRAMES if load_prev_run else None
         return cls(**hdf5_load(path, cls.__name__,
