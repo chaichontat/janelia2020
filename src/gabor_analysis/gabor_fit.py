@@ -1,12 +1,14 @@
 import time
 from functools import partial
 from importlib import import_module
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Callable
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
 import jax
+import pandas as pd
 from jax import value_and_grad, grad, jit
 from jax.numpy import cos, sin, exp
 from jax.numpy import pi as π
@@ -19,17 +21,19 @@ from ..utils.io import hdf5_load
 
 
 class GaborFit(Analyzer):
-    HYPERPARAMS = ["n_iter", "n_pc", "optimizer"]
-    ARRAYS = ["params_fit", "rf_pcaed", "rf_fit", "corr"]
-    DATAFRAMES = None
+    HYPERPARAMS = ["n_iter", "n_pc", "optimizer", "params_init", "penalties"]
+    ARRAYS = ["rf_pcaed", "rf_fit", "corr"]
+    DATAFRAMES = ["params_fit"]
     KEY = {s: i for i, s in enumerate(["σ", "θ", "λ", "γ", "φ", "pos_x", "pos_y"])}
 
     def __init__(
         self,
         n_pc: int = 30,
         n_iter: int = 1500,
-        n_split: int = 5,
+        n_split: int = 4,
         optimizer: Dict[str, str] = None,
+        params_init: Dict[str, float] = None,
+        penalties: np.ndarray = None,
         **kwargs,
     ):
         # Optimizer. See https://jax.readthedocs.io/en/latest/jax.experimental.optimizers.html.
@@ -40,13 +44,33 @@ class GaborFit(Analyzer):
         self.n_iter = n_iter
         self.n_pc = n_pc
         self.n_split = n_split
+        if params_init is None:
+            self.params_init = {
+                "σ": 1.5,
+                "θ": 0.0,
+                "λ": 0.9,
+                "γ": 1.5,
+                "φ": 0.0,
+                "pos_x": 0.0,
+                "pos_y": 0.0,
+            }
+        else:
+            self.params_init = params_init
+
+        if penalties is None:
+            self.penalties = np.zeros((5, 2), dtype=np.float32)
+            self.penalties[self.KEY["σ"]] = (0.2, 1.0)
+            self.penalties[self.KEY["γ"]] = (0.1, 0.5)
+        else:
+            self.penalties = penalties
+        self.penalties = jnp.array(self.penalties)
 
     def fit(self, rf: np.ndarray):
         print("Fitting Gabor.")
         assert rf.shape[1] % 2 == 0 and rf.shape[2] % 2 == 0
 
         if self.n_pc == 0:
-            print("No PCA.")
+            logging.info("No PCA.")
             self.rf_pcaed = rf
         else:
             self.rf_pcaed = gen_rf_rank(rf, self.n_pc)
@@ -72,30 +96,39 @@ class GaborFit(Analyzer):
         for i in range(self.n_split):
             sl = np.s_[splits[i] : splits[i + 1]]
             self.params_fit[sl], self.rf_fit[sl], self.corr[sl] = [
-                np.array(x) for x in self._split_fit(self.rf_pcaed[sl], opt_funcs, rf_dim)
+                np.array(x) for x in self._split_fit(self.rf_pcaed[sl], opt_funcs, rf_dim, i)
             ]
+
+        self.params_fit = pd.DataFrame(self.params_fit, columns=self.KEY)
+        self.params_fit["corr"] = self.corr
         return self
 
-    def _split_fit(self, rf_pcaed, opt_funcs, rf_dim):
+    def _split_fit(
+        self,
+        rf_pcaed: np.ndarray,
+        opt_funcs: Tuple[Callable, ...],
+        rf_dim: Tuple[int, int],
+        sp: int,
+    ) -> Tuple[jnp.DeviceArray, ...]:
+
         init, update, get_params = opt_funcs
         rf_pcaed = jax.device_put(rf_pcaed, jax.devices()[0])
-        params_jax = init(GaborFit._gen_params(rf_pcaed))
+        params_jax = init(GaborFit._gen_params(rf_pcaed, self.params_init))
 
         t0 = time.time()
-        for i in range(self.n_iter // 3):
-            if i % 100 == 0:
-                loss, Δ = value_and_grad(GaborFit._loss_func)(
-                    get_params(params_jax), rf_pcaed, rf_dim
-                )
+        for i in range(self.n_iter):
+            Δ = grad(GaborFit._loss_func)(
+                get_params(params_jax), rf_pcaed, rf_dim, self.penalties
+            )
+            params_jax = update(i, Δ, params_jax)
+
+            if i % 500 == 0 or i == self.n_iter - 1:
                 corr = jnp.mean(
                     correlate(self._make_gabor(get_params(params_jax), rf_dim), rf_pcaed)
                 )
-                print(f"Step {3 * i: 5d} Corr: {corr: 0.4f} t: {time.time() - t0: 6.2f}s")
-                params_jax = update(i, Δ, params_jax)
-            else:
-                for i in range(3):
-                    Δ = grad(GaborFit._loss_func)(get_params(params_jax), rf_pcaed, rf_dim)
-                    params_jax = update(i, Δ, params_jax)
+                logging.info(
+                    f"Split {sp}, step {i: 5d}. Corr: {corr: 0.4f} t: {time.time() - t0: 6.2f}s"
+                )
 
         params_fit = get_params(params_jax)
         rf_fit = self._make_gabor(params_fit, rf_dim)
@@ -114,7 +147,7 @@ class GaborFit(Analyzer):
 
     @staticmethod
     @partial(jit, static_argnums=1)
-    def _make_gabor(params: jnp.ndarray, rf_dim: Tuple[int, int]) -> jnp.ndarray:
+    def _make_gabor(params: jnp.ndarray, rf_dim: Tuple[int, int]) -> jnp.DeviceArray:
         σ, θ, λ, γ, φ = [
             u[:, jnp.newaxis, jnp.newaxis]
             for u in (params[:, 0], params[:, 1], params[:, 2], params[:, 3], params[:, 4])
@@ -137,29 +170,20 @@ class GaborFit(Analyzer):
         return zscore_img(output.real)
 
     @staticmethod
-    @partial(jit, static_argnums=2)
-    def _loss_func(params, img, rf_dim):
+    @partial(jit, static_argnums=(2, 3))
+    def _loss_func(params, img, rf_dim, penalties):
         made = GaborFit._make_gabor(params, rf_dim)
         metric = jnp.mean(-correlate(made, img))
 
-        penalty_σ = 0.2 * jnp.mean(jnp.maximum(0, -params[:, 0] + 1))  # flipped ReLU from 1
-        # penalty_θ = np.mean((2 * params[:, 2])**4)  # np.mean(np.maximum(0, params[:, 1] - 0.4))  # flipped ReLU from 1
-        # penalty_λ = 0.1 * np.mean((params[:, 2] - 1.)**2)
-        penalty_γ = 0.1 * jnp.mean(jnp.maximum(0, -params[:, 3] + 0.5))
+        for i in range(5):
+            metric += penalties[i, 0] * jnp.mean(
+                jnp.maximum(i, -params[:, i] + penalties[i, 1])
+            )
 
-        return metric + penalty_σ + penalty_γ
+        return metric
 
     @staticmethod
-    def _gen_params(rf):
-        p = {
-            "σ": 1.5,
-            "θ": 0.0,
-            "λ": 1.0,
-            "γ": 1.5,
-            "φ": 0.0,
-            "pos_x": 0.0,
-            "pos_y": 0.0,
-        }
+    def _gen_params(rf, p):
         n = rf.shape[0]
 
         params = np.zeros((n, len(p)))
