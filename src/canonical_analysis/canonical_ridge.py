@@ -108,4 +108,4 @@ def make_regression_truth():
     rf_v2.plot()
 
     hdf5_save('tests/data/regression_test_data.hdf5', 'CanonicalRidge',
-              arrs={'V1': rf_v1.rf_, 'V2': rf_v2.rf_}, append=True, overwrite_node=True)
+              arrs={'V1': rf_v1.rf_, 'V2': rf_v2.rf_}, append=True, overwrite_group=True)

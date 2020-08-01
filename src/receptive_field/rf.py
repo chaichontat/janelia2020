@@ -148,7 +148,7 @@ def make_regression_truth():
     rf.fit_pc(loader.imgs_stim, loader.S)
     pc = rf.rf_
     hdf5_save('tests/data/regression_test_data.hdf5', 'ReceptiveField', arrs={'neu': neu, 'pc': pc},
-              append=True, overwrite_node=True)
+              append=True, overwrite_group=True)
 
 
 if __name__ == '__main__':
