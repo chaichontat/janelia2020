@@ -28,14 +28,11 @@ class Analyzer:
 
     """
     def __init__(self, **kwargs):
-        for name, type_ in {'ARRAYS': np.generic, 'DATAFRAMES': pd.DataFrame}.items():
+        for name, type_ in {'ARRAYS': np.ndarray, 'DATAFRAMES': pd.DataFrame}.items():
             if getattr(self, name) is not None:
                 for var in getattr(self, name):
                     obj = kwargs.get(var)
-                    if not isinstance(obj, type_) and not None:
-                        setattr(self, var, obj)
-                    else:
-                        raise ValueError(f'{var} in {name} is not of type {type_.__name__} but {type(obj).__name__}.')
+                    setattr(self, var, obj)
 
     @abstractmethod
     def fit(self, *args, **kwargs):
