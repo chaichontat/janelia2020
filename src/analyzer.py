@@ -1,8 +1,9 @@
 import logging
 
 from abc import abstractmethod
+from functools import wraps
 from pathlib import Path
-from typing import List, Type, TypeVar, Union
+from typing import Callable, List, Type, TypeVar, Union
 
 import numpy as np
 import pandas as pd
@@ -74,6 +75,36 @@ class Analyzer:
     def __repr__(self) -> str:
         hyperparams = [f"\t{p} = {getattr(self, p)}\n" for p in self.HYPERPARAMS]
         return f"{type(self).__name__}:\n" + "".join(hyperparams)
+
+
+def load_if_exists(cls: Type[Analyzer]) -> Callable:
+    """Decorator to load an Analyzer object from `out_file`
+    if it exists. Can be overriden with `overwrite` argument into `func`.
+    Otherwise, run decorated function.
+
+    Args:
+        cls (Type[Analyzer]): [description]
+
+    Returns:
+        Callable: [description]
+    """
+    def decorate(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if kwargs.get("overwrite", False):
+                logging.info(f"Overwrite in {cls.__name__}.")
+                return func(*args, **kwargs)
+
+            try:
+                obj = cls.from_hdf5(kwargs["out_file"])
+                logging.info(f"{cls.__name__} loaded.")
+                return obj
+            except IndexError:
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorate
 
 
 # if __name__ == '__main__':
