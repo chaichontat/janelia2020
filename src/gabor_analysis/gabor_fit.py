@@ -2,11 +2,12 @@ import logging
 import time
 from functools import partial
 from importlib import import_module
-from typing import Callable, Dict, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import axes
 import numpy as np
 import pandas as pd
 from jax import grad, jit
@@ -265,6 +266,20 @@ class GaborFit(Analyzer):
 
         plt.tight_layout()
         plt.show()
+
+    def plot_corr(self, rf_raw: np.ndarray, rf_pcaed: Optional[np.ndarray] = None) -> axes:
+        if rf_pcaed is None:
+            rf_pcaed = self.rf_pcaed
+        
+        pc = correlate(rf_raw, rf_pcaed)
+        ga = correlate(rf_raw, self.rf_fit)
+
+        fig, ax = plt.subplots()
+        ax.scatter(pc, ga, s=1, alpha=0.1)
+        ax.set_title("Pearson's $r$ between (Gabor fit or PCAed RF) and raw RF of each neuron.")
+        ax.set_xlabel("PCAed RF $r$")
+        ax.set_xlabel("Gabor fit $r$")
+        return ax
 
 
 def make_regression_truth():
