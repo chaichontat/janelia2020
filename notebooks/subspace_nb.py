@@ -83,14 +83,14 @@ sns.pairplot(
 # We perform CCA with an 80:20 train:test stimuli split with various numbers of training stimuli.
 
 # %%
-df_rand = cr.run_random_splits(n_train=n_train)
+df_rand = cr.run_random_splits(ns=n_train)
 gen_chart(df_rand)
 
 # %% [markdown]
 # The test set now contains responses from the second repeat of the repeated stimuli. Here, we test whether the presence of the responses to an identical set of stimuli in the training set would affect the results.
 
 # %%
-df_repeated = cr.run_repeated_splits(n_train=n_train)
+df_repeated = cr.run_repeated_splits(ns_train=n_train)
 gen_chart(df_repeated[df_repeated.split == "test"]).encode(
     alt.Row("test_stim_in_train")
 ).properties(title=("Canonical Coefficients: Repeated Stimuli"), height=200)
@@ -109,8 +109,8 @@ sns.FacetGrid(df_corr, col="regions", row="group", hue="test_stim_in_train").map
 # How does training on an unrelated stimuli affect things?
 
 # %%
-df_un = cr.cr.get_cr_unrepeated(n_train=[5000, 10000])
-corr_between_tests = cr.calc_corr_test(
+df_un = cr.get_cr_unrepeated([5000, 10000])
+corr_between_tests = cr.calc_innerprod_test(
     df_un,
     idxs_test={
         "rep1": cr.loader.get_idx_rep(stim_idx=False)[:, 0],
@@ -153,10 +153,13 @@ base.mark_line().encode(
 # The same analysis, with spontaneous activities subtracted.
 
 # %%
-S_nospont = SubtractSpontAnalyzer(128).fit(loader.spks, loader.idx_spont).transform(loader.spks)
-with cr.set_spks_source(S_nospont):
-    df_un = cr.get_cr_unrepeated(n_train=[5000, 10000])
-    corr_between_tests = cr.calc_corr_test(
+spks_nospont = SubtractSpontAnalyzer(128).fit(loader.spks, loader.idx_spont).transform(loader.spks)
+with cr.set_spks_source(spks_nospont[loader.istim.index, :]):
+    df_un = cr.get_cr_unrepeated([5000, 10000])
+
+#%%
+with cr.set_spks_source(spks_nospont):
+    corr_between_tests = cr.calc_innerprod_test(
         df_un,
         idxs_test={
             "rep1": cr.loader.get_idx_rep(stim_idx=False)[:, 0],
