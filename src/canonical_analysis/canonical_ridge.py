@@ -37,8 +37,6 @@ class CanonicalRidge(Analyzer):
 
     def fit(self, X: Arrays, Y: Arrays):
         assert X.shape[0] == Y.shape[0]
-        X -= np.mean(X, axis=0)
-        Y -= np.mean(Y, axis=0)
 
         K = self._calc_canon_mat(X, Y, [self.lambda_x, self.lambda_y])
         model = PCA(self.n, random_state=onp.random.RandomState(self.seed)).fit(K)  # Randomized SVD.
@@ -56,8 +54,6 @@ class CanonicalRidge(Analyzer):
         return self.transform(X, Y)
 
     def transform(self, X: Arrays, Y: Arrays) -> Tuple[np.DeviceArray, np.DeviceArray]:
-        X -= np.mean(X, axis=0)
-        Y -= np.mean(Y, axis=0)
         self.transformed_U, self.transformed_V = X @ self.U, Y @ self.V
         return self.transformed_U, self.transformed_V
 
