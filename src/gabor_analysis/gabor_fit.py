@@ -1,28 +1,29 @@
+import logging
 import time
 from functools import partial
 from importlib import import_module
-from typing import Dict, Tuple, Callable
+from typing import Callable, Dict, Tuple
 
+import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-import logging
-import jax
 import pandas as pd
-from jax import value_and_grad, grad, jit
-from jax.numpy import cos, sin, exp
+from jax import grad, jit, value_and_grad
+from jax.numpy import cos, exp
 from jax.numpy import pi as π
+from jax.numpy import sin
 from jax.random import PRNGKey, randint
 
-from .utils_jax import correlate, zscore_img
 from ..analyzer import Analyzer
 from ..receptive_field.rf import gen_rf_rank
 from ..utils.io import hdf5_load
+from .utils_jax import correlate, zscore_img
 
 
 class GaborFit(Analyzer):
     HYPERPARAMS = ["n_iter", "n_pc", "optimizer", "params_init", "penalties"]
-    ARRAYS = ["rf_pcaed", "rf_fit", "corr"]
+    ARRAYS = ["rf_pcaed", "rf_fit"]
     DATAFRAMES = ["params_fit"]
     KEY = {s: i for i, s in enumerate(["σ", "θ", "λ", "γ", "φ", "pos_x", "pos_y"])}
 
@@ -36,14 +37,19 @@ class GaborFit(Analyzer):
         penalties: np.ndarray = None,
         **kwargs,
     ):
-        # Optimizer. See https://jax.readthedocs.io/en/latest/jax.experimental.optimizers.html.
+        self.rf_pcaed: np.ndarray
+        self.rf_fit: jnp.DeviceArray
+        self.params_fit: pd.DataFrame
         super().__init__(**kwargs)
+        
+        # Optimizer. See https://jax.readthedocs.io/en/latest/jax.experimental.optimizers.html.
         if optimizer is None:
             raise ValueError("Optimizer not named.")
         self.optimizer = optimizer
         self.n_iter = n_iter
         self.n_pc = n_pc
         self.n_split = n_split
+        
         if params_init is None:
             self.params_init = {
                 "σ": 1.5,
@@ -66,7 +72,6 @@ class GaborFit(Analyzer):
         self.penalties = jnp.array(self.penalties)
 
     def fit(self, rf: np.ndarray):
-        print("Fitting Gabor.")
         assert rf.shape[1] % 2 == 0 and rf.shape[2] % 2 == 0
 
         if self.n_pc == 0:
@@ -107,7 +112,7 @@ class GaborFit(Analyzer):
         self,
         rf_pcaed: np.ndarray,
         opt_funcs: Tuple[Callable, ...],
-        rf_dim: Tuple[int, int],
+        rf_dim: jnp.DeviceArray,
         sp: int,
     ) -> Tuple[jnp.DeviceArray, ...]:
 
@@ -240,4 +245,3 @@ def make_regression_truth():
     gabor = GaborFit(n_pc=30, n_iter=500, optimizer={"name": "adam", "step_size": 2e-2}).fit(rf)
     gabor.plot()
     gabor.save_append("tests/data/regression_test_data.hdf5")
-
