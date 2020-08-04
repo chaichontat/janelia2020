@@ -2,18 +2,19 @@ import logging
 import time
 from functools import partial
 from importlib import import_module
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, Union
 
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from jax import grad, jit, value_and_grad
+from jax import grad, jit
 from jax.numpy import cos, exp
 from jax.numpy import pi as π
 from jax.numpy import sin
 from jax.random import PRNGKey, randint
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
 from ..analyzer import Analyzer
 from ..receptive_field.rf import gen_rf_rank
@@ -41,7 +42,7 @@ class GaborFit(Analyzer):
         self.rf_fit: jnp.DeviceArray
         self.params_fit: pd.DataFrame
         super().__init__(**kwargs)
-        
+
         # Optimizer. See https://jax.readthedocs.io/en/latest/jax.experimental.optimizers.html.
         if optimizer is None:
             raise ValueError("Optimizer not named.")
@@ -49,7 +50,7 @@ class GaborFit(Analyzer):
         self.n_iter = n_iter
         self.n_pc = n_pc
         self.n_split = n_split
-        
+
         if params_init is None:
             self.params_init = {
                 "σ": 1.5,
@@ -235,6 +236,34 @@ class GaborFit(Analyzer):
 
         if save:
             plt.savefig(save)
+        plt.show()
+
+    def plot_params(self, pos: pd.DataFrame, **plot_kwargs: Union[float, str]) -> None:
+        fig, axs = plt.subplots(ncols=4, nrows=2, figsize=(18, 10))
+        axs = axs.flatten()
+
+        kwargs = dict(cmap="twilight_shifted", s=1, linewidth=0, alpha=0.8,)
+        kwargs.update(plot_kwargs)
+
+        for i, name in enumerate(self.params_fit.columns):
+            ax = axs[i]
+            u = ax.scatter(pos["x"], pos["y"], c=self.params_fit[name], **kwargs)
+
+            ax.grid(0)
+            ax.set_aspect("equal")
+            ax.set_xlabel("Brain $x$")
+            ax.set_ylabel("Brain $y$")
+            ax.set_title(str(name))
+
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="4%", pad=0.1,)
+            cbar = fig.colorbar(u, cax=cax)
+            cbar.outline.set_visible(False)
+
+        plt.tight_layout()
         plt.show()
 
 
