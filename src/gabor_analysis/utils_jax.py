@@ -14,7 +14,7 @@ def mae(data, fitted):
 
 @jit
 def correlate(data, fitted):
-    """ See Wikipedia. """
+    """ Designed for images (n_imgs, pxs). """
     x, y = check_data(data, fitted)
 
     Ex = jnp.mean(x, axis=1, keepdims=True)
@@ -30,7 +30,7 @@ def correlate(data, fitted):
 
 def check_data(data, fitted):
     if data.shape != fitted.shape:
-        print(f'Len data={data.shape} but {fitted.shape}.')
+        print(f"Len data={data.shape} but {fitted.shape}.")
     n = data.shape[0]
     x = jnp.reshape(data, (n, -1))
     y = jnp.reshape(fitted, (n, -1))
@@ -42,7 +42,7 @@ def zscore_img(img):
     if len(img.shape) == 3:
         img = img.reshape((img.shape[0], -1))
     else:
-        raise Exception('Not image!')
+        raise Exception("Not image!")
 
     # Using JAX instead of scipy.
     zed = (img - jnp.mean(img, axis=1, keepdims=1)) / jnp.sqrt(jnp.var(img, axis=1, keepdims=1))
