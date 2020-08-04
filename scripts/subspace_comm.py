@@ -228,7 +228,7 @@ class CCARegions:
         return cr.transform(*[spks_source[idx_test][:, i] for i in idxs_neu])
 
     @staticmethod
-    def multiple_corrcoef(arr1: np.ndarray, arr2: np.ndarray) -> np.ndarray:
+    def pairwise_inner_prod(arr1: np.ndarray, arr2: np.ndarray, normalize=True) -> np.ndarray:
         """Pearson's correlation coefficient for each column of a matrix.
 
         Args:
@@ -239,9 +239,10 @@ class CCARegions:
             np.ndarray: Vector containing correlation coefficient.
         """
         assert arr1.shape == arr2.shape
-        return np.array(
-            [np.corrcoef(arr1[:, i], arr2[:, i])[0, 1] for i in range(arr1.shape[1])]
-        )
+        use = [arr - np.mean(arr, axis=0, keepdims=True) for arr in [arr1, arr2]]
+        if normalize:
+            use = [arr / norm(arr, axis=0, keepdims=True) for arr in use]
+        return np.sum(use[0] * use[1], axis=0)
 
     def run_random_splits(self, ns: List[int], test_size=0.2) -> pd.DataFrame:
         """Run CCA using `ns` stim points. Test from `train_test_split`.
@@ -366,11 +367,12 @@ class CCARepeatedStim(CCARegions):
             res.append(objs.assign(n=n))
         return pd.concat(res)
 
-    def calc_corr_test(
+    def calc_innerprod_test(
         self,
         df_cr: pd.DataFrame,
         idxs_test: Dict[str, np.ndarray],
         pairs: List[Tuple[str, str]],
+        normalize: bool = True,
         **run_cca_transform_kwargs,
     ) -> pd.DataFrame:
         """Get df from run_cca and calc correlation between each pair of test indices.
@@ -379,11 +381,13 @@ class CCARepeatedStim(CCARegions):
             df_cr (pd.DataFrame): df with **at least** cols {cr, regions}
             idxs_test (Dict[str, np.ndarray]): Stim. {name of idx group: idx}
             pairs (List[Tuple[str, str]]): List of comparisons, order-sensitive in each tuple.
+            normalize (bool): True means correlation coefficient. False means covariance.
 
         Returns:
             pd.DataFrame: df with all cols from `df_cr` except `cr` + {match, corr} in tidy format.
         """
         res = list()
+        name = "corr" if normalize else "cov"
         for (x, y) in pairs:  # Check validity.
             assert x in idxs_test
             assert y in idxs_test
@@ -398,13 +402,15 @@ class CCARepeatedStim(CCARegions):
             }
             # Calculate corr.
             corrs = {
-                f"{p1}_{p2}": self.multiple_corrcoef(variates[p1][0], variates[p2][1])
+                f"{p1}_{p2}": self.pairwise_inner_prod(
+                    variates[p1][0], variates[p2][1], normalize=normalize
+                )
                 for (p1, p2) in pairs
             }
             res.append(
                 pd.DataFrame(corrs)
                 .reset_index()
-                .melt(id_vars="index", var_name="match", value_name="corr")
+                .melt(id_vars="index", var_name="match", value_name=name)
                 .assign(**dict(row))
             )
 
