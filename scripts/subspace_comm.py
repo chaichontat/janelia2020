@@ -1,11 +1,13 @@
 from contextlib import contextmanager
-from typing import Any, Dict, List, Tuple, Union, Optional, overload, Literal
+from functools import cached_property
+from typing import Any, Callable, Dict, List, Tuple, Union, Optional, overload, Literal
 
 import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.core.records import ndarray
+from numpy.linalg.linalg import norm
 import pandas as pd
 import seaborn as sns
 from scipy.stats import gaussian_kde, zscore
@@ -13,7 +15,7 @@ from sklearn.model_selection import train_test_split
 
 from src.canonical_analysis.canonical_ridge import CanonicalRidge
 from src.gabor_analysis.gabor_fit import GaborFit
-from src.spikeloader import SpikeLoader, LazyProperty
+from src.spikeloader import SpikeLoader
 
 
 class CCARegions:
@@ -23,29 +25,41 @@ class CCARegions:
     See `subspace_nb.ipynb` for examples.
     """
 
-    regions = {
-        "V1V1": (dict(group=0, region="V1"), dict(group=1, region="V1")),
-        "V1V2": (dict(group=0, region="V1"), dict(group=0, region="V2")),
-        "V2V2": (dict(group=0, region="V2"), dict(group=1, region="V2")),
-    }
-
     def __init__(
-        self, loader: SpikeLoader, gabor: GaborFit, n_cc: int = 200, seed: int = 85
+        self,
+        loader: SpikeLoader,
+        gabor: GaborFit,
+        n_cc: int = 200,
+        seed: int = 85,
+        regions: Dict[str, Tuple] = None,
+        prepare_df: Callable = None,
     ) -> None:
         self.loader = loader
         self.gabor = gabor
         self.seed = seed
         self.S = self.loader.S
         self.n_cc = n_cc
+        if regions is None:
+            self.regions = {
+                "V1V1": (dict(group=0, region="V1"), dict(group=1, region="V1")),
+                "V1V2": (dict(group=0, region="V1"), dict(group=0, region="V2")),
+                "V2V2": (dict(group=0, region="V2"), dict(group=1, region="V2")),
+            }
+        else:
+            self.regions = regions
 
-        self.df = self.prepare_df()
+        if prepare_df is None:
+            self.df = self.prepare_df()
+        else:
+            self.df = prepare_df(self.df_all)
+
         self.spks_source = None
 
-    @LazyProperty
+    @cached_property
     def spks(self) -> np.ndarray:
         return zscore(self.loader.spks, axis=0)
 
-    @LazyProperty
+    @cached_property
     def df_all(self) -> pd.DataFrame:
         """Convert params_fit to proper DF with columns. Add physical x, y pos.
 
@@ -331,7 +345,7 @@ class CCARepeatedStim(CCARegions):
         """Run CCA to compare the effects of the presence of test stimuli in the training data.
 
         Args:
-            n_train (List[int]): List of number of training samples to run.
+            ns_train (List[int]): List of number of training samples to run.
 
         Returns:
             pd.DataFrame: Canonical coefs with col [dimension, coefs, regions, split, n] (from self.run_cca).
@@ -352,7 +366,7 @@ class CCARepeatedStim(CCARegions):
         """Return DataFrame consisting of CanonicalRidge objects trained from unrepeated stimuli.
 
         Args:
-            n_train (List[int]): List of number of training samples to run.
+            ns_train (List[int]): List of number of training samples to run.
 
         Returns:
             pd.DataFrame: DF with columns [cr, regions, n].
@@ -448,7 +462,6 @@ class CCARepeatedStim(CCARegions):
 
 
 if __name__ == "__main__":
-    from scripts.subspace_comm import CCARepeatedStim
     from src.gabor_analysis.gabor_fit import GaborFit
     from src.spikeloader import SpikeLoader
 
