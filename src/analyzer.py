@@ -99,7 +99,8 @@ def load_if_exists(cls: Type[Analyzer]) -> Callable:
                 obj = cls.from_hdf5(kwargs["out_file"])
                 logging.info(f"{cls.__name__} loaded.")
                 return obj
-            except IndexError:
+            except (IndexError, OSError):
+                # For class not in file and file not existing, respectively.
                 return func(*args, **kwargs)
 
         return wrapper
