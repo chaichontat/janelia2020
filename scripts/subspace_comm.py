@@ -165,7 +165,7 @@ class CCARegions:
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         ...
 
-    def run_cca(self, idx_train, idx_test=None, return_obj=False):
+    def run_cca(self, idx_train, idx_train2=None, idx_test=None, return_obj=False):
         """
         Run CCA with regions as specified in `self.regions`.
         Canonical vectors are generated from `self.S[idx_stim_train]`.
@@ -188,12 +188,16 @@ class CCARegions:
             self.S if self.spks_source is None else self.spks_source
         )  # For set_spks_source.
 
+        if idx_train2 is None:
+            idx_train2 = idx_train
+
         for name, region_pair in self.regions.items():
             # Get neuron indices.
             idxs_neu = self._gen_idxs_neuron(self.df, region_pair)
             region1, region2 = [spks_source[:, idx] for idx in idxs_neu]
+
             cr = CanonicalRidge(self.n_cc, lambda_x=0.85, lambda_y=0.85).fit(
-                region1[idx_train], region2[idx_train]
+                region1[idx_train], region2[idx_train2]
             )
             out.append(pd.DataFrame(cr.coef).assign(regions=name, split="train"))
             if idx_test is not None:
@@ -216,7 +220,12 @@ class CCARegions:
             return pd.concat(out)
 
     def run_cca_transform(
-        self, cr: CanonicalRidge, regions: str, idx_test: np.ndarray, stim_idx: bool = True,
+        self,
+        cr: CanonicalRidge,
+        regions: str,
+        idx_test: np.ndarray,
+        idx_test2: Optional[np.ndarray] = None,
+        stim_idx: bool = True,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Calculate the canonical variates of given `idx_test` between `regions` pair.
 
@@ -239,7 +248,12 @@ class CCARegions:
         else:
             spks_source = self.spks_source
 
-        return cr.transform(*[spks_source[idx_test][:, i] for i in idxs_neu])
+        if idx_test2 is None:
+            idx_test2 = idx_test
+
+        return cr.transform(
+            spks_source[idx_test][:, idxs_neu[0]], spks_source[idx_test2][:, idxs_neu[1]]
+        )
 
     @staticmethod
     def pairwise_inner_prod(arr1: np.ndarray, arr2: np.ndarray, normalize=True) -> np.ndarray:
@@ -362,7 +376,7 @@ class CCARepeatedStim(CCARegions):
 
         return pd.concat(res)
 
-    def get_cr_unrepeated(self, ns_train: List[int]) -> pd.DataFrame:
+    def calc_cr(self, ns_train: List[int], **run_cca_kwargs) -> pd.DataFrame:
         """Return DataFrame consisting of CanonicalRidge objects trained from unrepeated stimuli.
 
         Args:
@@ -371,13 +385,11 @@ class CCARepeatedStim(CCARegions):
         Returns:
             pd.DataFrame: DF with columns [cr, regions, n].
         """
-        rand = np.random.default_rng(self.seed)
+        run_cca_kwargs["return_obj"] = True
         res = list()
+        # TODO Multiple ns.
         for n in ns_train:
-            _, objs = self.run_cca(
-                idx_train=rand.choice(self.idx_unrepeated, size=n, replace=False),
-                return_obj=True,
-            )
+            _, objs = self.run_cca(**run_cca_kwargs)
             res.append(objs.assign(n=n))
         return pd.concat(res)
 
@@ -401,12 +413,12 @@ class CCARepeatedStim(CCARegions):
             pd.DataFrame: df with all cols from `df_cr` except `cr` + {match, corr} in tidy format.
         """
         res = list()
-        name = "corr" if normalize else "cov"
+        corrcov = "corr" if normalize else "cov"
         for (x, y) in pairs:  # Check validity.
             assert x in idxs_test
             assert y in idxs_test
 
-        for row in df_cr.iloc:
+        for row in df_cr.iloc:  # For each cr instance.
             # Compute variates
             variates = {
                 name: self.run_cca_transform(
@@ -424,7 +436,7 @@ class CCARepeatedStim(CCARegions):
             res.append(
                 pd.DataFrame(corrs)
                 .reset_index()
-                .melt(id_vars="index", var_name="match", value_name=name)
+                .melt(id_vars="index", var_name="match", value_name=corrcov)
                 .assign(**dict(row))
             )
 
@@ -469,7 +481,7 @@ if __name__ == "__main__":
         SpikeLoader.from_hdf5("data/processed.hdf5"), GaborFit.from_hdf5("data/gabor.hdf5")
     )
     n_train = [500, 1000, 2000, 5000, 10000, 20000]
-    df_un = cr.get_cr_unrepeated(ns_train=n_train[:3])
+    df_un = cr.calc_cr(ns_train=n_train[:3])
     test = cr.corr_between_test(df_un)
     # %% [markdown]
     # V1 and V2 are separated by a line where the azimuth preference reverses with increased receptive field size (σ).
