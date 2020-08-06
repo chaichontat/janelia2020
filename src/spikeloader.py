@@ -39,10 +39,10 @@ class SpikeLoader:
         with np.load(path, mmap_mode="r") as npz:
             pos = pd.DataFrame({"x": npz["xpos"], "y": npz["ypos"]})
             istim = pd.Series(npz["istim"], index=npz["frame_start"])
-            spks = npz["spks"].T
+            spks = npz["spks"].T.astype(np.float32)
             imgs = ndi.zoom(
                 np.transpose(npz["img"], (2, 0, 1)), (1, img_scale, img_scale), order=1
-            )
+            ).astype(np.float32)
             img_dim = imgs.shape[1:]
         del npz
         return cls(**{k: v for k, v in locals().items() if k != "cls"})
@@ -67,9 +67,7 @@ class SpikeLoader:
         ...
 
     @overload
-    def get_idx_rep(
-        self, return_onetimers: Literal[False], stim_idx: bool
-    ) -> Any: # ndarray:
+    def get_idx_rep(self, return_onetimers: Literal[False], stim_idx: bool) -> Any:  # ndarray:
         ...
 
     def get_idx_rep(self, return_onetimers: bool = False, stim_idx: bool = True):
@@ -118,10 +116,16 @@ class SpikeLoader:
             self.imgs_stim, self.S, test_size=test_size, random_state=random_state
         )
 
-    def save(self, path: Path_str = "data/examples.hdf5", overwrite=False):
+    def save(self, path: Path_str = "data/examples.hdf5", overwrite=False, process=False):
         arrs = ["imgs", "spks"]
         dfs = ["istim", "pos"]
         params = ["img_scale", "img_dim"]
+
+        if process:
+            self.imgs_stim
+            self.S
+            arrs += ["_imgs_stim", "_S"]
+
         return hdf5_save_from_obj(
             path, "SpikeLoader", self, arrs=arrs, dfs=dfs, params=params, overwrite=overwrite
         )
@@ -139,8 +143,8 @@ class SpikeLoader:
     @classmethod
     def from_hdf5(cls, path: Path_str = "data/processed.hdf5"):
         if Path(path).suffix != ".hdf5":
-            logging.warning('Calling from_hdf5 but file does not have extension .hdf5.')
-            
+            logging.warning("Calling from_hdf5 but file does not have extension .hdf5.")
+
         arrs = ["imgs", "spks", "_imgs_stim", "_S"]
         dfs = ["istim", "pos"]
         params = ["img_scale", "img_dim"]
