@@ -1,3 +1,5 @@
+import logging
+from os import cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -9,6 +11,8 @@ from tables.group import Group
 Path_s = Union[Path, str]
 To_save = Optional[Dict[str, Any]]
 List_str = Optional[List[str]]
+
+tables.set_blosc_max_threads(cpu_count() // 2)
 
 
 def vars_to_dict(obj: Any, vars: List[str]) -> Dict[str, Any]:
@@ -28,7 +32,7 @@ def vars_to_dict(obj: Any, vars: List[str]) -> Dict[str, Any]:
 def hdf5_save(path: Path_s, group: str, *,
               arrs: To_save = None, dfs: To_save = None, params: To_save = None,
               overwrite: bool = False, append: bool = False, overwrite_group: bool = False,
-              complib: str = 'blosc:lz4hc', complevel: int = 9) -> None:
+              complib: str = 'blosc:lz4', complevel: int = 5) -> None:
 # fmt: on
 
     filters = tables.Filters(complib=complib, complevel=complevel)
@@ -82,6 +86,7 @@ def hdf5_load(path: Path_s, group: str, *,
               arrs: List_str = None, dfs: List_str = None, params: List_str = None,
               skip_na: bool = True):
     out = dict()
+    assert not isinstance(arrs, str)
     with tables.open_file(path, 'r') as f:
         f.root[group]  # Check if group exists.
         if arrs is not None:
@@ -89,6 +94,7 @@ def hdf5_load(path: Path_s, group: str, *,
                 try:
                     out[arr] = f.root[group][arr].read()
                 except IndexError as e:
+                    logging.warning(f"{arr} not in {group}.")
                     if not skip_na:
                         raise e
         if params is not None:
@@ -96,6 +102,7 @@ def hdf5_load(path: Path_s, group: str, *,
                 try:
                     out[param] = f.get_node_attr(f'/{group}', param)
                 except AttributeError as e:
+                    logging.warning(f"{param} not in {group}.")
                     if not skip_na:
                         raise e
     if dfs is not None:
@@ -103,6 +110,7 @@ def hdf5_load(path: Path_s, group: str, *,
             try:
                 out[df] = pd.read_hdf(path, f'{group}/{df}')
             except KeyError as e:
+                logging.warning(f"{df} not in {group}.")
                 if not skip_na:
                     raise e
     return out
