@@ -3,7 +3,7 @@ import logging
 from abc import abstractmethod
 from functools import wraps
 from pathlib import Path
-from typing import Callable, List, Type, TypeVar, Union
+from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
 
 import numpy as np
 import pandas as pd
@@ -29,12 +29,12 @@ class Analyzer:
     DATAFRAMES: List[str]
     HYPERPARAMS: List[str]
 
-    def __init__(self, **kwargs) -> None:
-        for name, type_ in {"ARRAYS": np.ndarray, "DATAFRAMES": pd.DataFrame}.items():
-            if getattr(self, name) is not None:
-                for var in getattr(self, name):
-                    obj = kwargs.get(var)
-                    setattr(self, var, obj)
+    def __init__(self, load_prev_run=False, **kwargs) -> None:
+        self.load_prev_run = load_prev_run
+        for k, v in kwargs.items():
+            if self._check_attr(k) is None and k != "path":
+                raise TypeError(f"{type(self).__name__} does not take {k} as argument.")
+            setattr(self, k, v)
 
     @abstractmethod
     def fit(self, *args, **kwargs):
@@ -63,14 +63,31 @@ class Analyzer:
     def from_hdf5(cls: Type[T], path: Path_s, load_prev_run: bool = True, **kwargs) -> T:
         if Path(path).suffix != ".hdf5":
             logging.warning("Calling from_hdf5 but file does not have extension .hdf5.")
-
-        arrs = cls.ARRAYS if load_prev_run else None
-        dfs = cls.DATAFRAMES if load_prev_run else None
+            
         return cls(
-            **hdf5_load(
-                path, cls.__name__, arrs=arrs, dfs=dfs, params=cls.HYPERPARAMS, **kwargs
-            )
+            path=path,
+            load_prev_run=load_prev_run,
+            **hdf5_load(path, cls.__name__, params=cls.HYPERPARAMS, **kwargs),
         )
+
+    def __getattr__(self, name: str):
+        if name == 'path':
+            raise AttributeError(f"Path not set in {type(self).__name__}.")
+        
+        if not self.load_prev_run or (res := self._check_attr(name)) is None:
+            raise AttributeError
+
+        setattr(self, name, hdf5_load(self.path, type(self).__name__, **res).get(name))
+        return getattr(self, name)
+
+    def _check_attr(self, name: str) -> Optional[Dict[str, str]]:
+        if self.ARRAYS is not None and name in self.ARRAYS:
+            return {"arrs": [name]}
+        elif self.DATAFRAMES is not None and name in self.DATAFRAMES:
+            return {"dfs": [name]}
+        elif self.HYPERPARAMS is not None and name in self.HYPERPARAMS:
+            return {"params": [name]}
+        return None
 
     def __repr__(self) -> str:
         hyperparams = [f"\t{p} = {getattr(self, p)}\n" for p in self.HYPERPARAMS]
@@ -78,8 +95,8 @@ class Analyzer:
 
 
 def load_if_exists(cls: Type[Analyzer]) -> Callable:
-    """Decorator to load an Analyzer object from `out_file`
-    if it exists. Can be overriden with `overwrite` argument into `func`.
+    """Decorator to load an Analyzer object from `out_file` if it exists.
+    Can be overriden with `overwrite` argument into `func`.
     Otherwise, run decorated function.
 
     Args:
@@ -88,6 +105,7 @@ def load_if_exists(cls: Type[Analyzer]) -> Callable:
     Returns:
         Callable: [description]
     """
+
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -106,14 +124,3 @@ def load_if_exists(cls: Type[Analyzer]) -> Callable:
         return wrapper
 
     return decorate
-
-
-# if __name__ == '__main__':
-#     test = SpikeLoader.from_hdf5('tests/data/raw.hdf5')
-#     s = SubtractSpontAnalyzer()
-#     s.fit(test.spks, test.get_idx_spont())
-#     S_out = s.transform(test.S)
-#     s.save('tests/data/purim.hdf5', overwrite=True)
-#
-#     x = SubtractSpontAnalyzer.from_hdf5('tests/data/purim.hdf5', load_prev_run=True)
-#     X_out = x.transform(test.S)

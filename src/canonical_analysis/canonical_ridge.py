@@ -83,25 +83,3 @@ class CanonicalRidge(Analyzer):
     def calc_canon_var(self, X: Arrays, Y: Arrays) -> np.DeviceArray:
         X_t, Y_t = self.transform(X, Y)
         return np.sum(np.multiply(X_t, Y_t), axis=0)
-
-
-def make_regression_truth():
-    loader = SpikeLoader.from_hdf5('tests/data/processed.hdf5')
-    print('Running CCA.')
-    V1, V2 = loader.S[:, loader.pos['y'] >= 210], loader.S[:, loader.pos['y'] < 210]
-    cca = CanonicalRidge().fit(V1, V2)
-
-    fig, ax = plt.subplots()
-    ax.plot(cca.coef)
-    ax.set_title('Canonical Correlation Coefficients')
-    ax.set_xlabel('CCs')
-    ax.set_ylabel('Pearson\'s r')
-
-    V1s, V2s = cca.subtract_canon_comp(V1, V2)
-    rf_v1 = ReceptiveField(loader.img_dim).fit_pc(loader.imgs_stim, V1s)
-    rf_v1.plot()
-    rf_v2 = ReceptiveField(loader.img_dim).fit_pc(loader.imgs_stim, V2s)
-    rf_v2.plot()
-
-    hdf5_save('tests/data/regression_test_data.hdf5', 'CanonicalRidge',
-              arrs={'V1': rf_v1.rf_, 'V2': rf_v2.rf_}, append=True, overwrite_group=True)

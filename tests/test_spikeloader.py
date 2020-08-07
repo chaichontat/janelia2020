@@ -6,13 +6,6 @@ from hypothesis import given
 from src.spikeloader import SpikeLoader
 
 
-def test_spikeloader():
-    loader = SpikeLoader.from_hdf5('tests/data/raw.hdf5')
-    gnd = SpikeLoader.from_hdf5('tests/data/processed.hdf5')
-    assert np.allclose(loader.S, gnd.S)
-    assert np.allclose(loader.imgs_stim, gnd.imgs_stim)
-
-
 @given(st.integers(min_value=1, max_value=100), st.integers(min_value=2, max_value=50))
 def test_get_idx_rep_rep(length, n_rep):
     loader = SpikeLoader(path=None, pos=None, istim=None, img_scale=None)

@@ -11,9 +11,9 @@ settings.load_profile('default')
 
 
 def test_regression_gabor():
-    rf = hdf5_load('tests/data/regression_test_data.hdf5', 'ReceptiveField', arrs=['neu'])['neu']
-    gabor = GaborFit.from_hdf5('tests/data/regression_test_data.hdf5', load_prev_run=False)
+    rf = hdf5_load('tests/data/test_data.hdf5', 'ReceptiveField', arrs=['neu'])['neu']
+    gabor = GaborFit.from_hdf5('tests/data/test_data.hdf5', load_prev_run=False)
     gabor.fit(rf)
 
-    gnd = GaborFit.from_hdf5('tests/data/regression_test_data.hdf5').rf_fit
+    gnd = GaborFit.from_hdf5('tests/data/test_data.hdf5').rf_fit
     assert np.mean((gabor.rf_fit - gnd)) < 0.05

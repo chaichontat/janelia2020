@@ -270,7 +270,7 @@ class GaborFit(Analyzer):
     def plot_corr(self, rf_raw: np.ndarray, rf_pcaed: Optional[np.ndarray] = None) -> axes:
         if rf_pcaed is None:
             rf_pcaed = self.rf_pcaed
-        
+
         pc = correlate(rf_raw, rf_pcaed)
         ga = correlate(rf_raw, self.rf_fit)
 
@@ -282,10 +282,12 @@ class GaborFit(Analyzer):
         return ax
 
 
-def make_regression_truth():
-    rf = hdf5_load("tests/data/regression_test_data.hdf5", "ReceptiveField", arrs=["neu"])[
-        "neu"
-    ]
+def gen_test_data(path):
+    rf = hdf5_load(path, "ReceptiveField", arrs=["neu"])["neu"]
     gabor = GaborFit(n_pc=30, n_iter=500, optimizer={"name": "adam", "step_size": 2e-2}).fit(rf)
     gabor.plot()
-    gabor.save_append("tests/data/regression_test_data.hdf5")
+    gabor.save_append(path)
+    
+    
+# if __name__ == "__main__":
+#     gen_test_data("data/test.hdf5")

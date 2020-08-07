@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from src.canonical_analysis.canonical_ridge import CanonicalRidge
 from src.receptive_field.rf import ReceptiveField
@@ -6,6 +7,7 @@ from src.spikeloader import SpikeLoader
 from src.utils.io import hdf5_load
 
 
+@pytest.mark.skip
 def test_regression_canonical_ridge():
     loader = SpikeLoader.from_hdf5('tests/data/processed.hdf5')
     V1, V2 = loader.S[:, loader.pos['y'] >= 210], loader.S[:, loader.pos['y'] < 210]
