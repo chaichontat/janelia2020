@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from os import cpu_count
 from pathlib import Path
@@ -127,3 +128,13 @@ def hdf5_list_groups(path: Path_s) -> List[str]:
     """
     with tables.open_file(path, 'r') as f:
         return [group._v_name for group in f.walk_groups()][1:]  # Remove root.
+
+
+def sha256(path):
+    h  = hashlib.sha256()
+    b  = bytearray(128 * 1024)
+    mv = memoryview(b)
+    with open(path, 'rb', buffering=0) as f:
+        for n in iter(lambda : f.readinto(mv), 0):
+            h.update(mv[:n])
+    return h.hexdigest()
