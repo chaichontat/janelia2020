@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import logging
 from functools import cached_property
-from typing import Literal, Tuple, Union, overload, Optional, Any
+from typing import Literal, Tuple, Union, overload
 from pathlib import Path
 
 import numpy as np
@@ -13,16 +12,34 @@ from scipy.stats import zscore
 from sklearn.model_selection import train_test_split
 from .analyzer import Analyzer
 
-from .utils.io import hdf5_load, hdf5_save_from_obj, sha256
+from .utils.io import hdf5_save_from_obj, sha256
 
 Path_str = Union[str, Path]
 
 
 class SpikeLoader(Analyzer):
-
     ARRAYS = ["spks", "imgs", "S", "imgs_stim"]
     DATAFRAMES = ["pos", "istim"]
     HYPERPARAMS = ["img_scale", "img_dim", "npzhash"]
+    
+    """Class to process spiking data.
+    Experiment expected to include periods with stimulation by image with or without repeats.
+    
+    Args:
+        img_scale (float, optional): Factor to scale imgs_stim. Defaults to 0.25.
+    
+    Attributes:
+        spks (np.ndarray): (n_frame × n_neu) Spike data from suite2p.
+        imgs (np.ndarray): (n_img × y × x) Image data.
+        S (np.ndarray): (n_stim × n_neu): z-scored {spks} (across time) containing only stim frames.
+        imgs_stim (np.ndarray): (n_img × px) z-scored flattened {imgs} (across time).
+        pos (pd.DataFrame): (n_neu × [x, y]) Physical location of each neuron.
+        istim (pd.Series): (n_stim) (idx_frame ↦ idx_img) with index.
+        img_scale (float)
+        img_dim (np.ndarray): (y × x) Scaled image size.
+        npzhash (bytes): SHA-256 has of original npz file.
+    
+    """
 
     def __init__(self, img_scale: int = 1, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -30,6 +47,22 @@ class SpikeLoader(Analyzer):
 
     @classmethod
     def from_npz(cls, path: Path_str, img_scale: float = 0.25) -> SpikeLoader:
+        """Expected file format: npz containing the following arrays:
+            - xpos (n_neu × 1): x physical location of neuron.
+            - ypos (n_neu × 1): y physical location of neuron.
+            - istim (n_stim × 1): (idx_stim ↦ idx_img) Maps nth (frames with stim) to img.
+            - frame_start (n_stim × 1): (idx_stim ↦ idx_frame) Maps nth (frames with stim) to actual time point.
+            - spks (n_neu × n_frame): Spike data from `suite2p`.
+            - img (y × x × n_img): Image data.
+            
+        Args:
+            path (Path_str)
+            img_scale (float, optional): Factor to scale imgs_stim. Defaults to 0.25.
+
+        Returns:
+            SpikeLoader
+        """
+        
         npzhash = sha256(path)
         with np.load(path, mmap_mode="r") as npz:
             pos = pd.DataFrame({"x": npz["xpos"], "y": npz["ypos"]})
@@ -51,22 +84,21 @@ class SpikeLoader(Analyzer):
         return cls(**{k: v for k, v in locals().items() if k != "cls"})
 
     @overload
-    def get_idx_rep(
-        self, return_onetimers: Literal[True], stim_idx: bool
-    ) -> Any:  # Tuple[ndarray, ndarray]:
+    def get_idx_rep(self, return_onetimers: Literal[True], stim_idx: bool) -> Tuple[ndarray, ndarray]:
         ...
 
     @overload
-    def get_idx_rep(self, return_onetimers: Literal[False], stim_idx: bool) -> Any:  # ndarray:
+    def get_idx_rep(self, return_onetimers: Literal[False], stim_idx: bool) -> np.ndarray:
         ...
 
-    def get_idx_rep(self, return_onetimers: bool = False, stim_idx: bool = True):
+    def get_idx_rep(self, return_onetimers: bool = False, stim_idx: bool = True) -> np.ndarray:
         istim: ndarray = self.istim.array.to_numpy()
         idx_unq, unq_cnt = np.unique(istim, return_counts=True)
         idx_repeating_img = idx_unq[np.argwhere(unq_cnt > 1)]
         idx = -1 * np.ones(
             [len(idx_repeating_img), np.max(unq_cnt)], dtype=istim.dtype
         )  # Generate array with (n_repeated_stim, max_repeats).
+        
         for i in range(len(idx_repeating_img)):
             if stim_idx:
                 curr = np.where(istim == idx_repeating_img[i])[0]  # From integer index.
@@ -85,7 +117,7 @@ class SpikeLoader(Analyzer):
         return idx
 
     @cached_property
-    def idx_spont(self) -> Any:
+    def idx_spont(self) -> np.ndarray:
         if self.spks is None:
             raise ValueError("Need to load full data for this")
         idx_spont = np.where(
@@ -95,9 +127,8 @@ class SpikeLoader(Analyzer):
                 assume_unique=True,
                 invert=True,
             )
-        )[
-            0
-        ]  # Invert indices.
+        )[0]  # Invert indices.
+        
         assert idx_spont.size + self.istim.index.size == self.spks.shape[0]
         return idx_spont
 
@@ -106,8 +137,15 @@ class SpikeLoader(Analyzer):
             self.imgs_stim, self.S, test_size=test_size, random_state=random_state
         )
 
-    def save_processed(self, path: Path_str, **kwargs):
-        self.imgs_stim  # Process everything.
+    def save_processed(self, path: Path_str, **kwargs) -> None:
+        """Save only processed data.
+        Discard {spks} and {imgs}.
+
+        Args:
+            path (Path_str):
+
+        """
+        self.imgs_stim
         self.S
         arrs = ["imgs_stim", "S"]
         return hdf5_save_from_obj(
