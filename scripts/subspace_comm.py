@@ -1,15 +1,11 @@
 from contextlib import contextmanager
 from functools import cached_property
-from typing import Any, Callable, Dict, List, Tuple, Union, Optional, overload, Literal
+from typing import Any, Callable, Dict, List, Tuple, Optional, overload, Literal
 
-import logging
-
-import matplotlib.pyplot as plt
 import numpy as np
-from numpy.core.records import ndarray
-from numpy.linalg.linalg import norm
 import pandas as pd
-import seaborn as sns
+
+from numpy.linalg.linalg import norm
 from scipy.stats import gaussian_kde, zscore
 from sklearn.model_selection import train_test_split
 
@@ -64,7 +60,7 @@ class CCARegions:
         """Convert params_fit to proper DF with columns. Add physical x, y pos.
 
         Returns:
-            pd.DataFrame: [description]
+            pd.DataFrame
         """
         d = pd.DataFrame(data=self.gabor.params_fit, columns=GaborFit.KEY.keys())
         d.rename(columns=dict(pos_x="azimuth", pos_y="altitude"), inplace=True)
@@ -257,14 +253,14 @@ class CCARegions:
 
     @staticmethod
     def pairwise_inner_prod(arr1: np.ndarray, arr2: np.ndarray, normalize=True) -> np.ndarray:
-        """Pearson's correlation coefficient for each column of a matrix.
+        """Pearson's correlation coefficient between each column of a matrix.
 
         Args:
             arr1 (np.ndarray)
             arr2 (np.ndarray)
 
         Returns:
-            np.ndarray: Vector containing correlation coefficient.
+            np.ndarray: Vector containing correlation coefficient or covariance.
         """
         assert arr1.shape == arr2.shape
         use = [arr - np.mean(arr, axis=0, keepdims=True) for arr in [arr1, arr2]]
@@ -317,10 +313,8 @@ class CCARepeatedStim(CCARegions):
         `idx_unrepeated` is the time when stimuli that are shown once is shown.
         """
         super().__init__(*args, **kwargs)
-        self.idx_test = self.loader.get_idx_rep()[:, 1]
-        self.idx_unrepeated = np.where(
-            np.isin(range(self.S.shape[0]), self.loader.get_idx_rep().flatten(), invert=True)
-        )[0]
+        self.idx_test, self.idx_unrepeated = self.loader.get_idx_rep(return_onetimers=True)
+        self.idx_test = self.idx_test[:, 1]
 
     def _get_idx_train_repeated(self, n: int) -> pd.DataFrame:
         """Generate indices of training data that include and does not include test stimuli.
