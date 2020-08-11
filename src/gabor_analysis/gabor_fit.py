@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import time
 from functools import partial
@@ -29,6 +31,24 @@ class GaborFit(Analyzer):
     DATAFRAMES = ["params_fit"]
     KEY = {s: i for i, s in enumerate(["σ", "θ", "λ", "γ", "φ", "pos_x", "pos_y"])}
 
+    """Class to perform Gabor fitting.
+    Takes in receptive field and output parameters.
+    
+    Args:
+        n_pc (int): Number of PCs for PCA smoothing. 0 for None.
+        n_iter (int): Number of fitting iterations.
+        n_split (int): Number of batches for fitting.
+        optimizer (Dict[str, str]): Dict with optimizer parameters {'name': func, **kwargs}.
+        params_init (Dict[str, float]): Dict with {KEY}: float.
+        penalties (np.ndarray): (7 × 2) (slope, threshold) parameters of horizontally flipped ReLU, 
+    
+    Attributes:
+        rf_pcaed (np.ndarray): PCAed ReceptiveField.rf_ 
+        rf_fit (jnp.DeviceArray): Synthesized Gabor params.
+        params_fit (pd.DataFrame): (n_neu × 7) Params.
+        
+    """
+    
     def __init__(
         self,
         n_pc: int = 30,
@@ -38,7 +58,7 @@ class GaborFit(Analyzer):
         params_init: Dict[str, float] = None,
         penalties: np.ndarray = None,
         **kwargs,
-    ):
+    ) -> None:
         self.rf_pcaed: np.ndarray
         self.rf_fit: jnp.DeviceArray
         self.params_fit: pd.DataFrame
@@ -73,7 +93,7 @@ class GaborFit(Analyzer):
             self.penalties = penalties
         self.penalties = jnp.array(self.penalties)
 
-    def fit(self, rf: np.ndarray):
+    def fit(self, rf: np.ndarray) -> GaborFit:
         assert rf.shape[1] % 2 == 0 and rf.shape[2] % 2 == 0
 
         if self.n_pc == 0:
