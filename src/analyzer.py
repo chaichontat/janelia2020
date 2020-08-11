@@ -3,10 +3,8 @@ import logging
 from abc import abstractmethod
 from functools import wraps
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
 
-import numpy as np
-import pandas as pd
 from .utils.io import hdf5_load, hdf5_save_from_obj
 
 Path_s = Union[Path, str]
@@ -15,13 +13,8 @@ T = TypeVar("T", bound="Analyzer")
 
 class Analyzer:
     """
-    Abstract class for data analysis from raw spike data in the form of `SpikeLoader` instance.
-    Prevent `SpikeLoader` from being pickled along with the instance.
-
-    All parameters required for a exact replication from an identical `SpikeLoader` instance
-    and any data required for a proper functioning of helper functions should be pointed to by an instance variable.
-
-    Any saved analysis should include proper context.
+    Abstract class for data analysis modules.
+    Saves parameters and hyperparameters in HDF5 of variables listed in class variables.
 
     """
 
@@ -63,17 +56,17 @@ class Analyzer:
     def from_hdf5(cls: Type[T], path: Path_s, load_prev_run: bool = True, **kwargs) -> T:
         if Path(path).suffix != ".hdf5":
             logging.warning("Calling from_hdf5 but file does not have extension .hdf5.")
-            
+
         return cls(
             path=path,
             load_prev_run=load_prev_run,
             **hdf5_load(path, cls.__name__, params=cls.HYPERPARAMS, **kwargs),
         )
 
-    def __getattr__(self, name: str):
-        if name == 'path':
+    def __getattr__(self, name: str) -> Any:
+        if name == "path":
             raise AttributeError(f"Path not set in {type(self).__name__}.")
-        
+
         if not self.load_prev_run or (res := self._check_attr(name)) is None:
             raise AttributeError
 
@@ -100,7 +93,7 @@ def load_if_exists(cls: Type[Analyzer]) -> Callable:
     Otherwise, run decorated function.
 
     Args:
-        cls (Type[Analyzer]): [description]
+        cls (Type[Analyzer]): Analyzer object.
 
     Returns:
         Callable: [description]
