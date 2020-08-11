@@ -16,7 +16,7 @@ List_str = Optional[List[str]]
 tables.set_blosc_max_threads(cpu_count() // 2)
 
 
-def vars_to_dict(obj: Any, vars: List[str]) -> Dict[str, Any]:
+def vars_to_dict(obj: Any, vars_: List[str]) -> Dict[str, Any]:
     """Get instance variables using names in `vars` from `obj`.
 
     Args:
@@ -26,7 +26,13 @@ def vars_to_dict(obj: Any, vars: List[str]) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Instance variable name and its object.
     """
-    return {var: getattr(obj, var) for var in vars}
+    out = dict()
+    for var in vars_:
+        try:
+            out[var] = getattr(obj, var)
+        except AttributeError:
+            logging.warning(f"Attribute {var} not found when saving {type(obj).__name__}.")
+    return out
 
 
 # fmt: off
@@ -130,7 +136,16 @@ def hdf5_list_groups(path: Path_s) -> List[str]:
         return [group._v_name for group in f.walk_groups()][1:]  # Remove root.
 
 
-def sha256(path):
+def sha256(path: Union[str, Path]) -> str:
+    """Generate SHA-256 hash of file.
+
+    Args:
+        path (Union[str, Path])
+
+    Returns:
+        str: Hash
+    """
+
     h  = hashlib.sha256()
     b  = bytearray(128 * 1024)
     mv = memoryview(b)

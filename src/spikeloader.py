@@ -37,7 +37,7 @@ class SpikeLoader(Analyzer):
         istim (pd.Series): (n_stim) (idx_frame ↦ idx_img) with index.
         img_scale (float)
         img_dim (np.ndarray): (y × x) Scaled image size.
-        npzhash (bytes): SHA-256 has of original npz file.
+        npzhash (str): SHA-256 has of original npz file.
     
     """
 
