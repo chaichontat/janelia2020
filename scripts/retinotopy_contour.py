@@ -7,6 +7,7 @@ from scipy.ndimage.filters import gaussian_filter
 from src.gabor_analysis.gabor_fit import GaborFit
 from src.spikeloader import SpikeLoader
 
+""" Smooth retinotopic field and make contour plot. """
 
 def gen_grid(var, σ):
     zi = griddata((df['x'], df['y']), df[var], (xi[None, :], yi[:, None]), method='nearest')
@@ -25,7 +26,6 @@ if __name__ == '__main__':
 
     z_x, z_y = gen_grid('pos_x', 150), gen_grid('pos_y', 100),
 
-    #%%
     fig, ax = plt.subplots(dpi=300)
     con = ax.contour(xi, yi, z_x, cmap='magma', levels=np.arange(-10.5, -2, 1.), alpha=1.)
     ax.clabel(con, inline=True, fontsize=8)
