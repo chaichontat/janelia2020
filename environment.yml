@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.8
   - altair
+  - black
   - hypothesis
   - jupyter
   - jupyterlab
