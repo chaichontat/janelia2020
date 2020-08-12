@@ -4,9 +4,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from .canonical_ridge import CanonicalRidge
 from ..receptive_field.rf import ReceptiveField
 from ..spikeloader import SpikeLoader
+from .canonical_ridge import CanonicalRidge
 
 sns.set()
 loader = SpikeLoader()

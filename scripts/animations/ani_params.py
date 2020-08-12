@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 from matplotlib.animation import FuncAnimation
 from matplotlib.axes import Axes
 from matplotlib.image import AxesImage

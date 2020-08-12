@@ -3,8 +3,7 @@ from functools import partial
 
 import hypothesis.strategies as st
 import numpy as np
-from hypothesis import given
-from hypothesis import settings
+from hypothesis import given, settings
 
 from src.receptive_field.rf import ReceptiveField
 from src.spikeloader import SpikeLoader

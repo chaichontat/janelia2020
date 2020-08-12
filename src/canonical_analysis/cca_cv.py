@@ -3,8 +3,7 @@ from functools import partial
 import jax.numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from skopt import gp_minimize
-from skopt import plots
+from skopt import gp_minimize, plots
 from skopt.space import Real
 
 from ..canonical_analysis.canonical_ridge import CanonicalRidge

@@ -2,8 +2,7 @@ from typing import Tuple, Union
 
 import jax.numpy as np
 import numpy as onp
-
-from jax.numpy.linalg import inv, cholesky
+from jax.numpy.linalg import cholesky, inv
 from sklearn.decomposition import PCA
 
 from ..analyzer import Analyzer

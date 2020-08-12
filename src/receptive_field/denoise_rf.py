@@ -7,8 +7,8 @@ import seaborn as sns
 from scipy.stats import zscore
 from sklearn.metrics import mean_squared_error
 
-from .rf import ReceptiveField
 from ..spikeloader import SpikeLoader
+from .rf import ReceptiveField
 
 sns.set()
 

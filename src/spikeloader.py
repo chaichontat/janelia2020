@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Literal, Tuple, Union, overload
 from pathlib import Path
+from typing import Literal, Tuple, Union, overload
 
 import numpy as np
 import pandas as pd
@@ -10,8 +10,8 @@ from numpy.core.records import ndarray
 from scipy import ndimage as ndi
 from scipy.stats import zscore
 from sklearn.model_selection import train_test_split
-from .analyzer import Analyzer
 
+from .analyzer import Analyzer
 from .utils.io import hdf5_save_from_obj, sha256
 
 Path_str = Union[str, Path]

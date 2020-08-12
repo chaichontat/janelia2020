@@ -1,9 +1,8 @@
-import torchvision.models as models
-from torchvision import transforms
-import torch
 import numpy as np
-
-from torch.utils.data import TensorDataset, DataLoader, Dataset
+import torch
+import torchvision.models as models
+from torch.utils.data import DataLoader, Dataset, TensorDataset
+from torchvision import transforms
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)

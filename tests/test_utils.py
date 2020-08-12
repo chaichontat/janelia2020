@@ -1,7 +1,7 @@
 import hypothesis.strategies as st
 import numpy as np
 from hypothesis import given
-from hypothesis.extra.numpy import arrays, floating_dtypes, array_shapes
+from hypothesis.extra.numpy import array_shapes, arrays, floating_dtypes
 
 from src.utils.io import *
 

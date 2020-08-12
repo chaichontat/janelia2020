@@ -9,7 +9,6 @@ from typing import Callable, Dict, Optional, Tuple, Union
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import axes
 import numpy as np
 import pandas as pd
 from jax import grad, jit
@@ -17,6 +16,7 @@ from jax.numpy import cos, exp
 from jax.numpy import pi as π
 from jax.numpy import sin
 from jax.random import PRNGKey, randint
+from matplotlib.pyplot import axes
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
 from ..analyzer import Analyzer

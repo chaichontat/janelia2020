@@ -1,10 +1,9 @@
 from contextlib import contextmanager
 from functools import cached_property
-from typing import Any, Callable, Dict, List, Tuple, Optional, overload, Literal
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, overload
 
 import numpy as np
 import pandas as pd
-
 from numpy.linalg.linalg import norm
 from scipy.stats import gaussian_kde, zscore
 from sklearn.model_selection import train_test_split

@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .gabor_fit import GaborFit
-from .utils_jax import mse, correlate
 from ..receptive_field.rf import ReceptiveField, gen_rf_rank
 from ..spikeloader import SpikeLoader
+from .gabor_fit import GaborFit
+from .utils_jax import correlate, mse
 
 
 class GaborDiag(GaborFit):

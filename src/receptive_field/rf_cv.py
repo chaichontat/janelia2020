@@ -1,12 +1,12 @@
-from sklearn.metrics import mean_squared_error
-from skopt import gp_minimize
-from skopt.space import Real, Integer
-from scipy.stats import zscore
-from sklearn.model_selection import KFold
-
-from .rf import ReceptiveField, ReducedRankReceptiveField
-from ..spikeloader import SpikeLoader
 import numpy as np
+from scipy.stats import zscore
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import KFold
+from skopt import gp_minimize
+from skopt.space import Integer, Real
+
+from ..spikeloader import SpikeLoader
+from .rf import ReceptiveField, ReducedRankReceptiveField
 
 # %% CV λ
 
@@ -66,8 +66,8 @@ if __name__ == '__main__':
     loader = SpikeLoader.from_hdf5()
     test = rr_rf_cv(loader)
 
-    from skopt.plots import plot_objective
     import matplotlib.pyplot as plt
+    from skopt.plots import plot_objective
 
     plot_objective(test)
     plt.tight_layout()
