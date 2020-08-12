@@ -179,6 +179,57 @@ def gen_rf_rank(rfs: np.ndarray, n_pc: int, seed: int = 455) -> np.ndarray:
     return ReceptiveField.reshape_rf(B_reduced.T, rfs_shape[1:])
 
 
+def gen_rf_rank_regional(
+    loader: SpikeLoader,
+    rf: ReceptiveField,
+    x_width: float,
+    y_width: float,
+    n_pc: int = 50,
+    seed: int = 455,
+    plot: bool = False,
+) -> np.ndarray:
+    """PCA-denoise RFs based on neuronal location.
+    Each block is PCAed independently to capture local variation.
+    Useful for recordings with larger FOV.
+    x_width and y_width specify the size of each block.
+
+    Args:
+        loader (SpikeLoader)
+        rf (ReceptiveField)
+        x_width (float): Width of block based on loader.pos.
+        y_width (float): Height of block based on loader.pos.
+        n_pc (int, optional): Defaults to 50.
+        seed (int, optional): Defaults to 455.
+        plot (bool, optional): Plot the lines that correspond to each block. Defaults to False.
+
+    Returns:
+        np.ndarray: [description]
+    """
+    pos = loader.pos
+    x_cuts = [pos["x"].min() + i * x_width for i in range(np.ptp(pos["x"]) // x_width + 1)]
+    y_cuts = [pos["y"].min() + i * y_width for i in range(np.ptp(pos["y"]) // x_width + 1)]
+    x_cuts[-1] = pos["x"].max()
+    y_cuts[-1] = pos["y"].max()
+
+    rf_pcaed = np.inf * np.ones(rf.rf_.shape, dtype=np.float32)
+    for i in range(len(x_cuts) - 1):
+        for j in range(len(y_cuts) - 1):
+            idx = pos[
+                pos.x.between(x_cuts[i], x_cuts[i + 1])
+                & pos.y.between(y_cuts[j], y_cuts[j + 1])
+            ].index
+            rf_pcaed[idx] = gen_rf_rank(rf.rf_[idx], n_pc, seed)
+    assert np.all(np.isfinite(rf_pcaed))
+    # not_captured = loader.pos.iloc[np.argwhere(~np.isfinite(np.max(rf_pcaed, axis=(1, 2)))).squeeze()]
+    if plot:
+        plt.scatter(pos.x, pos.y, s=0.8, alpha=0.5)
+        [plt.axvline(x) for x in x_cuts]
+        [plt.axhline(y) for y in y_cuts]
+        plt.show()
+
+    return rf_pcaed
+
+
 def gen_test_data(path: str) -> None:
     loader = SpikeLoader.from_hdf5(path)
     rf = ReceptiveField(loader.img_dim)
