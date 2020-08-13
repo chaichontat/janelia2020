@@ -32,7 +32,7 @@ class Analyzer:
     def fit(self, *args, **kwargs):
         """ Fit `X` according to params. """
 
-    def save(self, path: Path_s, save_transformed: bool = True, **kwargs) -> None:
+    def save(self, path: Path_s, save_transformed: bool = True, overwrite=False, **kwargs) -> None:
         arrs = (
             [arr for arr in self.ARRAYS if "transformed" not in arr]
             if not save_transformed
@@ -45,11 +45,12 @@ class Analyzer:
             arrs=arrs,
             dfs=self.DATAFRAMES,
             params=self.HYPERPARAMS,
+            overwrite=overwrite,
             **kwargs,
         )
 
-    def save_append(self, *args, **kwargs) -> None:
-        return self.save(*args, append=True, **kwargs)
+    def save_append(self, *args, overwrite_node=False, **kwargs) -> None:
+        return self.save(*args, append=True, overwrite_node=overwrite_node, **kwargs)
 
     @classmethod
     def from_hdf5(cls: Type[T], path: Path_s, load_prev_run: bool = True, **kwargs) -> T:
