@@ -222,7 +222,7 @@ class GaborFit(Analyzer):
 
         for i in range(5):
             metric += penalties[i, 0] * jnp.mean(
-                jnp.maximum(i, -params[:, i] + penalties[i, 1])
+                jnp.maximum(0, -params[:, i] + penalties[i, 1])
             )
 
         return metric
