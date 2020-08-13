@@ -6,6 +6,7 @@ dependencies:
   - altair
   - black
   - hypothesis
+  - isort
   - jupyter
   - jupyterlab
   - jupytext
@@ -16,6 +17,7 @@ dependencies:
   - scikit-learn
   - scikit-image
   - scikit-optimize
+  - papermill
   - pip
   - pytables
   - pip:
