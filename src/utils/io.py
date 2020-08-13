@@ -1,14 +1,13 @@
-from functools import partial
 import hashlib
 import logging
+from functools import partial
 from os import cpu_count
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 import tables
-from tables.group import Group
 
 Path_s = Union[Path, str]
 To_save = Optional[Dict[str, Any]]
@@ -64,7 +63,8 @@ def hdf5_save(path: Path_s, group: str, *,
                 f.remove_node(f.root, group, recursive=True)
                 f.create_group(f.root, group)
             else:
-                raise Exception('Group (current class you are trying to save) already exists in file. Consider setting `overwrite_node=True` when saving.')
+                raise Exception('Group (current class you are trying to save) already exists in file.'
+                                'Consider setting `overwrite_node=True` when saving.')
 
         if arrs is not None:
             for k, v in arrs.items():
@@ -82,7 +82,7 @@ def hdf5_save(path: Path_s, group: str, *,
 
 def hdf5_save_from_obj(path: Path_s, group: str, obj, *,
                        arrs: List_str = None, dfs: List_str = None, params: List_str = None,
-                       **kwargs):
+                       **kwargs) -> None:
     locals_ = locals()
     converted = {name: vars_to_dict(obj, locals_[name])
                  for name in ['arrs', 'dfs', 'params'] if locals_[name] is not None}
@@ -90,7 +90,27 @@ def hdf5_save_from_obj(path: Path_s, group: str, obj, *,
     return hdf5_save(path, group, **kwargs)
 
 
-def _hdf5_get(names: List[str], func: Callable, err: BaseException, group: str, skip_na: bool):
+def _hdf5_get(names: List[str], func: Callable[[str, str], Any], err: BaseException,
+              group: str, skip_na: bool) -> Dict[str, Any]:
+    """Retrieve objects from the HDF5 file.
+    
+    Required as different types require different retrieval functions and throw
+    different exceptions.
+
+    Args:
+        names (List[str]): List of variable names.
+        func (Callable[[str, str], Any]): Function used to retrieve data.
+        
+        err (BaseException): Exception to catch when variable does not exist.
+        group (str): Name of group/node in the HDF5 file.
+        skip_na (bool): Whether to ignore variables that do not exist.
+
+    Raises:
+        e: {err} when not {skip_na}
+
+    Returns:
+        Dict[str, Any]: Dict with retrieved objects.
+    """
     assert not isinstance(names, str)
     objs = dict()
     if names is not None:
@@ -106,7 +126,7 @@ def _hdf5_get(names: List[str], func: Callable, err: BaseException, group: str, 
     
 def hdf5_load(path: Path_s, group: str, *,
               arrs: List_str = None, dfs: List_str = None, params: List_str = None,
-              skip_na: bool = True):
+              skip_na: bool = True) -> Dict[str, Any]:
     out = dict()
     get_func = partial(_hdf5_get, group=group, skip_na=skip_na)
     
@@ -136,11 +156,11 @@ def hdf5_list_groups(path: Path_s) -> List[str]:
         return [group._v_name for group in f.walk_groups()][1:]  # Remove root.
 
 
-def sha256(path: Union[str, Path]) -> str:
+def sha256(path: Path_s) -> str:
     """Generate SHA-256 hash of file.
 
     Args:
-        path (Union[str, Path])
+        path (Path_s)
 
     Returns:
         str: Hash
