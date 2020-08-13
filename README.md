@@ -1,24 +1,26 @@
-# janelia2020
+# In lieu of Janelia Undergraduate Scholars Program 2020
 
 [![Build Status](https://travis-ci.com/chaichontat/janelia2020.svg?branch=master)](https://travis-ci.com/chaichontat/janelia2020) [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/chaichontat/janelia2020/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/chaichontat/janelia2020/?branch=master)
 
-Work at the Pachitariu lab during summer 2020 (aka the transition from the BC (before coronavirus) to the AD (after domestication)).
+Work at the Pachitariu lab during summer 2020 (aka _annus coronalis_).
 
 > An exercise in two-photon neural data analysis and proper scientific computing practices.
 
-## Science
+## Science Overview
 
-We analyzed 20,000-40,000 simulatenously imaged neurons from the mouse visual cortex. Two-photon images were deconvolved into spikes with [suite2p](https://github.com/MouseLand/suite2p).
+We analyzed 20,000-40,000 simulatenously imaged neurons from the mouse visual cortex. Two-photon images were deconvolved into spikes with [suite2p](https://github.com/MouseLand/suite2p). More details [here](demo/).
 
-### High-throughput Neuron Tuning
+### High-throughput Receptive Field Analysis
 
-We inferred each neuron's receptive field (RF) using ridge regression and fitted a [Gabor filter](https://en.wikipedia.org/wiki/Gabor_filter) to each RF with gradient descent.
+We inferred and characterized each neuron's receptive field (RF) using ridge regression and fitted a [Gabor filter](https://en.wikipedia.org/wiki/Gabor_filter) to each RF with gradient descent.
 
 ![Gabor fit parameters](https://user-images.githubusercontent.com/34997334/90060936-6f225880-dcb3-11ea-8182-0c08301eeaca.png)
 
-### High-dimensional Representation
+### High-dimensional Representation in Spiking Data
 
-We identified linear subspaces in the data that encode stimuli information using canonical correlation analysis (CCA).
+We identified linear [communication subspaces](https://doi.org/10.1016/j.neuron.2019.01.026) using [regularized canonical correlation analysis](http://www2.imm.dtu.dk/pubdb/edoc/imm4981.pdf) (CCA) and explored the sensitivity of the results to the number of stimuli.
+
+![CCA](https://user-images.githubusercontent.com/34997334/90169979-5c6c5a00-dd6d-11ea-8160-51a334965f25.png)
 
 ## DevOps
 
@@ -29,5 +31,5 @@ We strive to use the current best practices in [scientific computing](https://jo
 - [Static type checks](https://github.com/microsoft/pyright)
 - [Code autoformatting](https://github.com/psf/black)
 - Modular architecture
-- Standardized data storage (HDF5) with parameters coupled with data
+- Standardized data storage (HDF5) with parameters coupled to data
 - [Perceptually uniform colormaps for visualization](https://www.kennethmoreland.com/color-advice/)
