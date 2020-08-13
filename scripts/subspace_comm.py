@@ -369,7 +369,7 @@ class CCARepeatedStim(CCARegions):
 
         return pd.concat(res)
 
-    def calc_cr(self, ns_train: List[int], **run_cca_kwargs) -> pd.DataFrame:
+    def calc_cr(self, ns_train: List[int], idx_train: np.ndarray, **run_cca_kwargs) -> pd.DataFrame:
         """Return DataFrame consisting of CanonicalRidge objects trained from unrepeated stimuli.
 
         Args:
@@ -382,7 +382,7 @@ class CCARepeatedStim(CCARegions):
         res = list()
         # TODO Multiple ns.
         for n in ns_train:
-            _, objs = self.run_cca(**run_cca_kwargs)
+            _, objs = self.run_cca(idx_train=idx_train, **run_cca_kwargs)
             res.append(objs.assign(n=n))
         return pd.concat(res)
 
