@@ -40,7 +40,25 @@ class GaborFit(Analyzer):
         n_split (int): Number of batches for fitting.
         optimizer (Dict[str, str]): Dict with optimizer parameters {'name': func, **kwargs}.
         params_init (Dict[str, float]): Dict with {KEY}: float.
-        penalties (np.ndarray): (7 × 2) (slope, threshold) parameters of horizontally flipped ReLU, 
+        penalties (np.ndarray): (7 × 2) (slope, threshold) parameters of horizontally flipped ReLU,
+            Example of (1, 2).
+              4 +---------------------------------------+
+                |       +       +       +       +       |
+                |                                       |
+              3 |*+                                   +-|
+                | ***                                   |
+                |   ***                                 |
+              2 |-+    ***                            +-|
+                |         ***                           |
+                |           ****                        |
+              1 |-+            ***                    +-|
+                |                ****                   |
+                |                   ****                |
+              0 |-+                    *****************|
+                |                                       |
+                |       +       +       +       +       |
+             -1 +---------------------------------------+
+               -1       0       1       2       3       4
     
     Attributes:
         rf_pcaed (np.ndarray): PCAed ReceptiveField.rf_ 
