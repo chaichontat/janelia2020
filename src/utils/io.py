@@ -1,8 +1,9 @@
+from functools import partial
 import hashlib
 import logging
 from os import cpu_count
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -89,37 +90,36 @@ def hdf5_save_from_obj(path: Path_s, group: str, obj, *,
     return hdf5_save(path, group, **kwargs)
 
 
+def _hdf5_get(names: List[str], func: Callable, err: BaseException, group: str, skip_na: bool):
+    assert not isinstance(names, str)
+    objs = dict()
+    if names is not None:
+        for name in names:
+            try:
+                objs[name] = func(group, name)
+            except err as e:
+                logging.warning(f"{name} not in {group}.")
+                if not skip_na:
+                    raise e
+    return objs
+    
+    
 def hdf5_load(path: Path_s, group: str, *,
               arrs: List_str = None, dfs: List_str = None, params: List_str = None,
               skip_na: bool = True):
     out = dict()
-    assert not isinstance(arrs, str)
+    get_func = partial(_hdf5_get, group=group, skip_na=skip_na)
+    
     with tables.open_file(path, 'r') as f:
         f.root[group]  # Check if group exists.
-        if arrs is not None:
-            for arr in arrs:
-                try:
-                    out[arr] = f.root[group][arr].read()
-                except IndexError as e:
-                    logging.warning(f"{arr} not in {group}.")
-                    if not skip_na:
-                        raise e
-        if params is not None:
-            for param in params:
-                try:
-                    out[param] = f.get_node_attr(f'/{group}', param)
-                except AttributeError as e:
-                    logging.warning(f"{param} not in {group}.")
-                    if not skip_na:
-                        raise e
-    if dfs is not None:
-        for df in dfs:
-            try:
-                out[df] = pd.read_hdf(path, f'{group}/{df}')
-            except KeyError as e:
-                logging.warning(f"{df} not in {group}.")
-                if not skip_na:
-                    raise e
+        arrs_call = (arrs, lambda group, name: f.root[group][name].read(), IndexError)
+        params_call = (params, lambda group, name: f.get_node_attr(f'/{group}', name), AttributeError)
+        
+        out.update(get_func(*arrs_call))
+        out.update(get_func(*params_call))
+
+    dfs_call = (dfs, lambda group, name: pd.read_hdf(path, f'{group}/{name}'), KeyError)
+    out.update(get_func(*dfs_call))
     return out
 
 
