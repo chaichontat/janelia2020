@@ -29,14 +29,10 @@ class cvPCA(Analyzer):
 
         self.sums_of_squares = sums_of_squares
 
-    def _cvpca_decorator(cvpca_func):
+    def _repeat_shuffling(cvpca_func):
         @wraps(cvpca_func)
-        def cvpca_routines(self: cvPCA, X: np.ndarray, *args, **kwargs):
+        def calc_ss(self: cvPCA, X: np.ndarray, *args, **kwargs):
             np.random.seed(self.seed)
-
-            # Clear old inputs.
-            self.X = np.empty(0)
-            self.Y = np.empty(0)
 
             # Check inputs.
             assert X.ndim == 3
@@ -54,14 +50,14 @@ class cvPCA(Analyzer):
             self.sums_of_squares = ss
             return self.sums_of_squares
 
-        return cvpca_routines
+        return calc_ss
 
-    @_cvpca_decorator
+    @_repeat_shuffling
     def run_cvpca(self, X):
         X_swapped = self.swap_idx_between_repeats(X)
-        return self._cvPCA(X_swapped, X_swapped)
+        return self._pca_inner_prod(X_swapped, X_swapped)
 
-    @_cvpca_decorator
+    @_repeat_shuffling
     def run_cvpca_external_eigvec(self, X, Y):
         assert Y.ndim == 3
         X_swapped = self.swap_idx_between_repeats(X)
@@ -74,7 +70,7 @@ class cvPCA(Analyzer):
             X_use = X_swapped
             Y_use = Y
 
-        return self._cvPCA(X_use, Y_use)
+        return self._pca_inner_prod(X_use, Y_use)
 
     @staticmethod
     def swap_idx_between_repeats(X):
@@ -84,7 +80,7 @@ class cvPCA(Analyzer):
         X_use[1, idx_flip, :] = X[0, idx_flip, :]
         return X_use
 
-    def _cvPCA(self, X, train):
+    def _pca_inner_prod(self, X, train):
         assert X.shape[1] >= self.n_pc
         assert X.shape[2] >= self.n_pc
         assert X.shape[2] == train.shape[2]
@@ -191,8 +187,7 @@ if __name__ == '__main__':
 # # #%%
 # # from sklearn.manifold import MDS
 # # pcoa = MDS(n_components=1, dissimilarity='precomputed')
-# # fuck = pcoa.fit_transform(1-make_rdm(S[:, out[:, 0]]))
-# #
+
 # # #%%
 # # from sklearn.manifold import TSNE
 # # model = TSNE(n_components=1, verbose=1)

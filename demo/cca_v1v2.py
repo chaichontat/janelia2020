@@ -13,7 +13,7 @@ import seaborn as sns
 
 from scripts.subspace_comm import CCARepeatedStim
 from src.gabor_analysis.gabor_fit import GaborFit
-from src.power_law_rdm.subtract_spont import SubtractSpontAnalyzer
+from src.power_law.subtract_spont import SubtractSpontAnalyzer
 from src.spikeloader import SpikeLoader
 
 alt.data_transformers.disable_max_rows()
