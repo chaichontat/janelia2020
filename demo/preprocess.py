@@ -12,7 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from scripts.subspace_comm import CCARegions
+from src.canonical_analysis.subspace_comm import CCARegions
 from src.spikeloader import SpikeLoader
 
 sns.set()
