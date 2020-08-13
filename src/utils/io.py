@@ -49,7 +49,7 @@ def hdf5_save(path: Path_s, group: str, *,
     if append:
         mode = 'a'
         if not Path(path).exists():
-            print('Append but file does not exist, saving anyway.')
+            logging.warning('Append but file does not exist, saving anyway.')
     else:
         mode = 'w'
         if not overwrite and Path(path).exists():
