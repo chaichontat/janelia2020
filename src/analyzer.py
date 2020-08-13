@@ -49,8 +49,8 @@ class Analyzer:
             **kwargs,
         )
 
-    def save_append(self, *args, overwrite_node=False, **kwargs) -> None:
-        return self.save(*args, append=True, overwrite_node=overwrite_node, **kwargs)
+    def save_append(self, *args, overwrite_group=False, **kwargs) -> None:
+        return self.save(*args, append=True, overwrite_group=overwrite_group, **kwargs)
 
     @classmethod
     def from_hdf5(cls: Type[T], path: Path_s, load_prev_run: bool = True, **kwargs) -> T:

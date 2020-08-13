@@ -64,7 +64,7 @@ def hdf5_save(path: Path_s, group: str, *,
                 f.create_group(f.root, group)
             else:
                 raise Exception('Group (current class you are trying to save) already exists in file.'
-                                'Consider setting `overwrite_node=True` when saving.')
+                                'Consider setting `overwrite_group=True` when saving.')
 
         if arrs is not None:
             for k, v in arrs.items():
