@@ -1,4 +1,3 @@
-#%%
 import logging
 from pathlib import Path
 
@@ -25,8 +24,7 @@ parameters = dict(
 path_output = Path("outputs/")
 path_output.mkdir(parents=True, exist_ok=True)
 
-nbs = ["retinotopy"]
-#%%
+nbs = ["preprocess", "run_rf", "run_gabor", "retinotopy", "cca_stimuli"]
 for nb in nbs:
     try:
         ntb = jupytext.read(nb + ".py")

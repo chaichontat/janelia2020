@@ -4,7 +4,7 @@ import altair as alt
 import seaborn as sns
 from IPython import get_ipython
 from src.gabor_analysis.gabor_fit import GaborFit
-from src.receptive_field.rf import ReceptiveField, gen_rf_rank_regional
+from src.receptive_field.rf import ReceptiveField
 from src.spikeloader import SpikeLoader
 from src.utils.plots import gabor_interactive
 

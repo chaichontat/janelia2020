@@ -2,15 +2,21 @@
 
 ## Notebooks
 
-Notebooks are great for visualizing data but not so great for proper coding practices. See this [talk](https://www.youtube.com/watch?v=7jiPeIFXb6U). Python scripts are not really compatible with visualizations.
+Notebooks are great for visualizing data but not so great for proper coding practices. See this [talk](https://www.youtube.com/watch?v=7jiPeIFXb6U). Python scripts are not really compatible with visualizations. To combine the best of both worlds, we use the following packages:
 
-[`Jupytext`](https://github.com/mwouts/jupytext) allows us to execute and transform `.py` files into notebooks. To run each notebook, run the following command:
+- [`Jupytext`](https://github.com/mwouts/jupytext) lets us transform `.py` files into notebooks.
 
-```script
-jupytext --to notebook --execute notebook.py
-```
+- [`papermill`](https://github.com/nteract/papermill) lets us parameterize and execute notebooks.
 
-Note that Visual Studio Code also allows interactive [cell-by-cell execution](https://code.visualstudio.com/docs/python/jupyter-support-py).
+The result is a robust system of executing Python scripts with arguments, similar to `argparse`, but with pretty notebooks as the output.
+
+### Details
+
+We use the [`percent`](https://jupytext.readthedocs.io/en/latest/formats.html?highlight=percent#the-percent-format) format to represent cells in Python scripts. This format is also compatible with [interactive Python](https://code.visualstudio.com/docs/python/jupyter-support-py) in Visual Studio Code.
+
+### Run
+
+The pipeline is implemented in `_run_nbs.py`. This script lets us run the entire analysis pipeline to a dataset.
 
 ## High-throughput Receptive Field Analysis
 
