@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # %%
 # %cd ../
+# %config InlineBackend.figure_format='retina'
 
 import altair as alt
 import numpy as np

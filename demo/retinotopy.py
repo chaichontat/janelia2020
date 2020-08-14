@@ -1,5 +1,7 @@
 # %%
 # %cd ../
+# %config InlineBackend.figure_format='retina'
+
 import altair as alt
 import seaborn as sns
 from IPython import get_ipython

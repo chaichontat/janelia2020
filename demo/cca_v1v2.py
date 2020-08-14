@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 # %%
 # %cd ../
-
-from IPython import get_ipython
-
-get_ipython().run_line_magic("config", "InlineBackend.figure_format='retina'")
+# %config InlineBackend.figure_format='retina'
 
 import altair as alt
 import matplotlib.pyplot as plt

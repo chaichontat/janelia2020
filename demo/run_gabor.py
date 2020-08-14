@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # %%
 # %cd ../
+# %config InlineBackend.figure_format='retina'
 
 import logging
 
@@ -38,6 +39,17 @@ g = GaborFit(
 ).fit(rf_pcaed)
 g.plot()
 g.save_append(path_loader, overwrite_group=True)
+
+# %% [markdown]
+"""
+### Diagnostic
+
+As a diagnostic, we check compare
+- the correlations between the PCAed RFs and raw RFs and 
+- the correlations between the fitted Gabor RFs and raw RFs.
+
+If out Gabor fit can cover enough "receptive field space", there should be a linear correspondence between these two models.
+"""
 
 # %%
 g.plot_corr(rf.rf_, rf_pcaed)

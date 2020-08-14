@@ -32,3 +32,9 @@ The pipeline is implemented in `_run_nbs.py`. This script lets us run the entire
    - GPU usage highly recommended. This is why we split the files up in this way.
 4. `retinotopy.py`
    - Visualize the results of Gabor fits.
+
+## High-dimensional Representation in Spiking Data
+
+- `cca_v1v2.py`
+- `cca_stimuli.py`
+- `cca_stimuli_crossed.py` 

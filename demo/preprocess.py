@@ -3,6 +3,7 @@
 
 # %%
 # %cd ../
+# %config InlineBackend.figure_format='retina'
 
 import logging
 from pathlib import Path
