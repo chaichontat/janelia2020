@@ -1,4 +1,6 @@
 # %%
+# %cd ../
+
 import altair as alt
 import numpy as np
 import pandas as pd
@@ -14,24 +16,28 @@ sns.set()
 
 # %% [markdown]
 #  ### Canonical Correlation Analysis
-# 
+#
 #  Goal: compare the neural representations between V1 and V2
-# 
+#
 #  Let $X$ and $Y$ be an $(n \times p)$ matrix where $n$ is the number of stimuli and $p$ is the number of neurons.
-# 
+#
 #  We first split the spiking data of each region into two for a comparison between intra-region and inter-region CCA. Hence, we have 3 different CCA models to fit.
-# 
+#
 #  | $X$  |  $Y$ |
 #  |------|------|
 #  | V1-1 | V1-2 |
 #  | V1-1 | V2-1 |
 #  | V2-1 | V2-2 |
-# 
+#
 #  Then, for each group, we split the spiking data by stimulus into train and test sets.
 
 # %%
-loader = SpikeLoader.from_hdf5("data/superstim_TX57.hdf5")
-gabor = GaborFit.from_hdf5("data/superstim_TX57_gabor.hdf5")
+path_loader = "data/superstim_TX57.hdf5"
+path_gabor = "data/superstim_TX57.hdf5"
+
+# %%
+loader = SpikeLoader.from_hdf5(path_loader)
+gabor = GaborFit.from_hdf5(path_gabor)
 
 # %%
 idx_spont = loader.idx_spont
@@ -111,6 +117,7 @@ def gen_chart(data: pd.DataFrame) -> alt.Chart:
         .properties(width=200, height=250)
         .add_selection(selection)
     )
+
 
 gen_chart(innerprod_between_tests[0]) | gen_chart(innerprod_between_tests[1])
 

@@ -3,6 +3,7 @@
 # %cd ../
 
 from IPython import get_ipython
+
 get_ipython().run_line_magic("config", "InlineBackend.figure_format='retina'")
 
 import altair as alt
@@ -10,7 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-
 from src.canonical_analysis.subspace_comm import CCARepeatedStim
 from src.gabor_analysis.gabor_fit import GaborFit
 from src.power_law.subtract_spont import SubtractSpontAnalyzer
@@ -42,8 +42,7 @@ path_gabor = "data/superstim.hdf5"
 
 # %%
 cr = CCARepeatedStim(
-    loader := SpikeLoader.from_hdf5(path_loader),
-    gabor := GaborFit.from_hdf5(path_gabor),
+    loader := SpikeLoader.from_hdf5(path_loader), gabor := GaborFit.from_hdf5(path_gabor),
 )
 n_train = [500, 1000, 2000, 5000, 10000]
 
@@ -73,6 +72,7 @@ def gen_chart(data: pd.DataFrame) -> alt.Chart:
             column=alt.Column("regions:N"),
         )
     ).properties(width=200, height=300)
+
 
 df_rand = cr.run_random_splits(ns=n_train)
 gen_chart(df_rand).properties(title=("Inter- and Intra-region Canonical Coefficients"))
@@ -119,14 +119,18 @@ corr_between_tests = cr.calc_innerprod_test(
         ("rep1", "spont"),
     ],
     stim_idx=False,
-    normalize=True
+    normalize=True,
 )
 
 # %% [markdown]
 # Here, we generate canonical vectors from all unrepeated stimuli. These are then used to separately generate canonical variates for the repeated stimuli. We then calculate the correlation (canonical coefficient) within and between repeats.
 
 # %%
-corr_between_tests['compare_type'] = np.where(corr_between_tests['match'].isin(['ctrl_ctrl', 'rep1_rep1', 'spont_spont']), 'same', 'different')
+corr_between_tests["compare_type"] = np.where(
+    corr_between_tests["match"].isin(["ctrl_ctrl", "rep1_rep1", "spont_spont"]),
+    "same",
+    "different",
+)
 
 selection = alt.selection_multi(fields=["match"], bind="legend")
 
@@ -146,7 +150,9 @@ base.mark_line().encode(
 # The same analysis, with spontaneous activities subtracted.
 
 # %%
-spks_nospont = SubtractSpontAnalyzer(128).fit(loader.spks, loader.idx_spont).transform(loader.spks)
+spks_nospont = (
+    SubtractSpontAnalyzer(128).fit(loader.spks, loader.idx_spont).transform(loader.spks)
+)
 with cr.set_spks_source(spks_nospont[loader.istim.index, :]):
     df_un = cr.calc_cr([5000, 10000], no_rep)
 
@@ -172,7 +178,11 @@ with cr.set_spks_source(spks_nospont):
 
 
 # %%
-corr_between_tests['compare_type'] = np.where(corr_between_tests['match'].isin(['ctrl_ctrl', 'rep1_rep1', 'spont_spont']), 'same', 'different')
+corr_between_tests["compare_type"] = np.where(
+    corr_between_tests["match"].isin(["ctrl_ctrl", "rep1_rep1", "spont_spont"]),
+    "same",
+    "different",
+)
 
 selection = alt.selection_multi(fields=["match"], bind="legend")
 

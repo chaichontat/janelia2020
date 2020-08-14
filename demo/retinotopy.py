@@ -1,10 +1,8 @@
 # %%
-from IPython import get_ipython
-
-get_ipython().run_line_magic("cd", "../")
-
+# %cd ../
 import altair as alt
 import seaborn as sns
+from IPython import get_ipython
 from src.gabor_analysis.gabor_fit import GaborFit
 from src.receptive_field.rf import ReceptiveField, gen_rf_rank_regional
 from src.spikeloader import SpikeLoader
@@ -15,14 +13,14 @@ get_ipython().run_line_magic("config", "InlineBackend.figure_format='retina'")
 sns.set()
 
 # %%
-f = SpikeLoader.from_hdf5("data/superstim_TX60_allsort.hdf5")
-rf = ReceptiveField.from_hdf5("data/superstim_TX60_allsort.hdf5")
-g = GaborFit.from_hdf5("data/superstim_TX60_allsort_gabor.hdf5")
+path_loader = "data/superstim_TX60_allsort.hdf5"
+path_rf = "data/superstim_TX60_allsort.hdf5"
+path_gabor = "data/superstim_TX60_allsort_gabor.hdf5"
 
 # %%
-rf_pcaed = gen_rf_rank_regional(f, rf, xy_div=(5, 3))
-# %%
-g.plot_corr(rf.rf_, rf_pcaed)
+f = SpikeLoader.from_hdf5(path_loader)
+rf = ReceptiveField.from_hdf5(path_rf)
+g = GaborFit.from_hdf5(path_gabor)
 
 # %%
 g.plot_params(f.pos)
@@ -31,5 +29,5 @@ g.plot_params(f.pos)
 # ## Interactive Plot
 
 # %%
-alt.renderers.enable('mimetype')
+alt.renderers.enable("mimetype")
 gabor_interactive(f, g, n_samples=500)

@@ -1,9 +1,7 @@
 # %%
 # %cd ../
-
-from IPython.core.getipython import get_ipython
-
 import logging
+from pathlib import Path
 
 import numpy as np
 import seaborn as sns
@@ -17,12 +15,14 @@ logging.getLogger().setLevel(logging.INFO)
 path_loader = "data/superstim.hdf5"
 
 # %%
-loader = SpikeLoader.from_hdf5(path)
+loader = SpikeLoader.from_hdf5(path_loader)
 rf = ReceptiveField(loader.img_dim, lamda=1.1)
 rf.fit_neuron(loader.imgs_stim, loader.S)
 rf.plot()
-rf.save_append(path)
+rf.save_append(path_loader, overwrite_group=True)
 
 # %%
 rf_pcaed = gen_rf_rank_regional(loader, rf, xy_div=(5, 3), plot=True)
-np.save("data/rf_pcaed.npy", rf_pcaed)
+
+# path_loader = Path(path_loader)
+# np.save(path_loader.parent / (path_loader.stem + "rf_pcaed.npy"), rf_pcaed)

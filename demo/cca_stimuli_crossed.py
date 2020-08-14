@@ -107,13 +107,13 @@ corr_classic, corr_swap = corr(df_classic), corr(df_swap)
 
 alt.hconcat(
     gen_chart(corr_classic).properties(title="Classic"),
-    gen_chart(corr_swap).properties(title="Swapped")
+    gen_chart(corr_swap).properties(title="Swapped"),
 )
 
 # %% [markdown]
 # ### Summary
 # This is a plot of the correlation of canonical variates or projections
-# between the activities of neuron groups 1 and 2, with different lines 
+# between the activities of neuron groups 1 and 2, with different lines
 # signifying different first/second repeat combinations.
 #
 # The name of each line is split by \_ the first is always neuron group1
@@ -149,4 +149,3 @@ alt.hconcat(
 #     scatter_kws={"s": 1, "alpha": 0.5},
 # )
 # ax.set_aspect("equal")
-
