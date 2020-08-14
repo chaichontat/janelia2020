@@ -17,7 +17,7 @@ from src.spikeloader import SpikeLoader
 sns.set()
 get_ipython().run_line_magic("config", "InlineBackend.figure_format='retina'")
 
-# %%
+# %% tags=["parameters"]
 # logging.getLogger().setLevel(logging.INFO)
 path_npz = "data/superstim.npz"
 

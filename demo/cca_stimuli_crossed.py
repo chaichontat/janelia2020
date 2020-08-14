@@ -15,7 +15,7 @@ from src.spikeloader import SpikeLoader
 alt.data_transformers.disable_max_rows()
 sns.set()
 
-# %%
+# %% tags=["parameters"]
 path_loader = "data/superstim_TX60_allsort.hdf5"
 path_gabor = "data/superstim_TX60_allsort_gabor.hdf5"
 

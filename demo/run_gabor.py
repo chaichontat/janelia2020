@@ -12,7 +12,7 @@ from src.receptive_field.rf import ReceptiveField
 logging.getLogger().setLevel(logging.INFO)
 sns.set()
 
-# %%
+# %% tags=["parameters"]
 path_loader = "data/superstim.hdf5"
 path_rf = "data/superstim.hdf5"
 path_rf_pcaed = "data/rf_pcaed.npy"

@@ -11,7 +11,7 @@ from src.spikeloader import SpikeLoader
 sns.set()
 logging.getLogger().setLevel(logging.INFO)
 
-# %%
+# %% tags=["parameters"]
 path_loader = "data/superstim.hdf5"
 
 # %%

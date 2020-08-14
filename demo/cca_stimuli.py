@@ -31,7 +31,7 @@ sns.set()
 #
 #  Then, for each group, we split the spiking data by stimulus into train and test sets.
 
-# %%
+# %% tags=["parameters"]
 path_loader = "data/superstim_TX57.hdf5"
 path_gabor = "data/superstim_TX57.hdf5"
 

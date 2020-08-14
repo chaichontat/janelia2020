@@ -12,7 +12,7 @@ get_ipython().run_line_magic("matplotlib", "inline")
 get_ipython().run_line_magic("config", "InlineBackend.figure_format='retina'")
 sns.set()
 
-# %%
+# %% tags=["parameters"]
 path_loader = "data/superstim_TX60_allsort.hdf5"
 path_rf = "data/superstim_TX60_allsort.hdf5"
 path_gabor = "data/superstim_TX60_allsort_gabor.hdf5"
