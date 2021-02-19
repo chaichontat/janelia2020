@@ -28,7 +28,7 @@ def penalties():
     out[GaborFit.KEY["σ"]] = (0.04, 2.0)
     out[GaborFit.KEY["λ"]] = (0.6, 0.85)
     out[GaborFit.KEY["γ"]] = (0.8, 0.5)
-    return out
+    return tuple(map(tuple, out))  # Make immutable.
 
 
 g = GaborFit(

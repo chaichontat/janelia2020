@@ -40,7 +40,7 @@ class GaborFit(Analyzer):
         n_split (int): Number of batches for fitting.
         optimizer (Dict[str, str]): Dict with optimizer parameters {'name': func, **kwargs}.
         params_init (Dict[str, float]): Dict with {KEY}: float.
-        penalties (np.ndarray): (7 × 2) (slope, threshold) parameters of horizontally flipped ReLU,
+        penalties (Tuple[Tuple[int, int], ...]): (7 × 2) (slope, threshold) parameters of horizontally flipped ReLU,
             Example of (1, 2).
               4 +---------------------------------------+
                 |       +       +       +       +       |
@@ -66,7 +66,7 @@ class GaborFit(Analyzer):
         params_fit (pd.DataFrame): (n_neu × 7) Params.
         
     """
-    
+
     def __init__(
         self,
         n_pc: int = 30,
@@ -74,7 +74,7 @@ class GaborFit(Analyzer):
         n_split: int = 4,
         optimizer: Dict[str, str] = None,
         params_init: Dict[str, float] = None,
-        penalties: np.ndarray = None,
+        penalties: Tuple[Tuple[int, int], ...] = None,
         **kwargs,
     ) -> None:
         self.rf_pcaed: np.ndarray
@@ -107,9 +107,9 @@ class GaborFit(Analyzer):
             self.penalties = np.zeros((5, 2), dtype=np.float32)
             self.penalties[self.KEY["σ"]] = (0.2, 1.0)
             self.penalties[self.KEY["γ"]] = (0.1, 0.5)
+            self.penalties = tuple(map(tuple, self.penalties))
         else:
             self.penalties = penalties
-        self.penalties = jnp.array(self.penalties)
 
     def fit(self, rf: np.ndarray) -> GaborFit:
         assert rf.shape[1] % 2 == 0 and rf.shape[2] % 2 == 0
@@ -122,7 +122,7 @@ class GaborFit(Analyzer):
 
         opt_funcs = self._get_optimizer(self.optimizer)
         self.rf_pcaed = np.array(zscore_img(self.rf_pcaed))
-        rf_dim = jnp.array((self.rf_pcaed.shape[2] // 2, self.rf_pcaed.shape[1] // 2))
+        rf_dim = (self.rf_pcaed.shape[2] // 2, self.rf_pcaed.shape[1] // 2)
 
         # Split RF.
         splits = [
@@ -152,7 +152,7 @@ class GaborFit(Analyzer):
         self,
         rf_pcaed: np.ndarray,
         opt_funcs: Tuple[Callable, ...],
-        rf_dim: jnp.DeviceArray,
+        rf_dim: Tuple[int],
         sp: int,
     ) -> Tuple[jnp.DeviceArray, ...]:
 
@@ -221,8 +221,8 @@ class GaborFit(Analyzer):
         metric = jnp.mean(-correlate(made, img))
 
         for i in range(5):
-            metric += penalties[i, 0] * jnp.mean(
-                jnp.maximum(0, -params[:, i] + penalties[i, 1])
+            metric += penalties[i][0] * jnp.mean(
+                jnp.maximum(0, -params[:, i] + penalties[i][1])
             )
 
         return metric
@@ -238,7 +238,10 @@ class GaborFit(Analyzer):
         # Center location.
         yc, xc = rf.shape[1] // 2 + 1, rf.shape[2] // 2 + 1
 
-        idx = np.argmax(np.abs(rf.reshape([n, -1])), axis=1,)
+        idx = np.argmax(
+            np.abs(rf.reshape([n, -1])),
+            axis=1,
+        )
         params[:, 5] = idx % rf.shape[2] - xc  # x
         params[:, 6] = idx // rf.shape[2] - yc  # y
 
@@ -281,7 +284,12 @@ class GaborFit(Analyzer):
         fig, axs = plt.subplots(ncols=4, nrows=2, figsize=(18, 10))
         axs = axs.flatten()
 
-        kwargs = dict(cmap="twilight_shifted", s=1, linewidth=0, alpha=0.8,)
+        kwargs = dict(
+            cmap="twilight_shifted",
+            s=1,
+            linewidth=0,
+            alpha=0.8,
+        )
         kwargs.update(plot_kwargs)
 
         for i, name in enumerate(self.params_fit.columns):
@@ -298,7 +306,11 @@ class GaborFit(Analyzer):
                 spine.set_visible(False)
 
             divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="4%", pad=0.1,)
+            cax = divider.append_axes(
+                "right",
+                size="4%",
+                pad=0.1,
+            )
             cbar = fig.colorbar(u, cax=cax)
             cbar.outline.set_visible(False)
 
@@ -325,7 +337,7 @@ def gen_test_data(path):
     gabor = GaborFit(n_pc=30, n_iter=500, optimizer={"name": "adam", "step_size": 2e-2}).fit(rf)
     gabor.plot()
     gabor.save_append(path)
-    
-    
+
+
 # if __name__ == "__main__":
 #     gen_test_data("data/test.hdf5")
