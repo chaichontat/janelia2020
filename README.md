@@ -1,6 +1,6 @@
 # (In lieu of) Janelia Undergraduate Scholars Program 2020
 
-[![Build Status](https://travis-ci.com/chaichontat/janelia2020.svg?branch=master)](https://travis-ci.com/chaichontat/janelia2020) [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/chaichontat/janelia2020/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/chaichontat/janelia2020/?branch=master) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Build Status](https://travis-ci.com/chaichontat/janelia2020.svg?branch=master)](https://travis-ci.com/chaichontat/janelia2020) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![nbviewer](https://img.shields.io/badge/render-nbviewer-orange.svg)](https://nbviewer.jupyter.org/github/chaichontat/janelia2020/tree/master/demo/outputs/)
 
 Work at the Pachitariu lab during summer 2020 (aka _annus coronalis_).
 
@@ -8,7 +8,7 @@ Work at the Pachitariu lab during summer 2020 (aka _annus coronalis_).
 
 ## Science Overview
 
-We analyzed 20,000-40,000 simulatenously imaged neurons from the mouse visual cortex. Two-photon images were deconvolved into spikes with [suite2p](https://github.com/MouseLand/suite2p). More details [here](demo/).
+We analyzed 20,000-40,000 simulatenously imaged neurons from the mouse visual cortex. Two-photon images were deconvolved into spikes with [suite2p](https://github.com/MouseLand/suite2p). More details [here](demo/). Check analysis demos at [nbviewer](https://nbviewer.jupyter.org/github/chaichontat/janelia2020/tree/master/demo/outputs/)!
 
 ### High-throughput Receptive Field Analysis
 
