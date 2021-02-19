@@ -2,7 +2,7 @@ name: janelia2020
 channels:
   - conda-forge
 dependencies:
-  - python
+  - python=3.9
   - altair
   - black
   - hypothesis
