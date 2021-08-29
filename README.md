@@ -1,6 +1,9 @@
 # (In lieu of) Janelia Undergraduate Scholars Program 2020
 
-[![Build Status](https://travis-ci.com/chaichontat/janelia2020.svg?branch=master)](https://travis-ci.com/chaichontat/janelia2020) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![nbviewer](https://img.shields.io/badge/render-nbviewer-orange.svg)](https://nbviewer.jupyter.org/github/chaichontat/janelia2020/tree/master/demo/outputs/) [![DOI](https://zenodo.org/badge/272083279.svg)](https://zenodo.org/badge/latestdoi/272083279)
+[![GitHub Actions](https://github.com/chaichontat/janelia2020/actions/workflows/python-package-conda.yml/badge.svg)](https://github.com/chaichontat/janelia2020/actions/workflows/python-package-conda.yml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![nbviewer](https://img.shields.io/badge/render-nbviewer-orange.svg)](https://nbviewer.jupyter.org/github/chaichontat/janelia2020/tree/master/demo/outputs/)
+[![DOI](https://zenodo.org/badge/272083279.svg)](https://zenodo.org/badge/latestdoi/272083279)
 
 Work at the Pachitariu lab during summer 2020 (aka _annus coronalis_).
 
